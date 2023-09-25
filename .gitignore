@@ -2,7 +2,8 @@
 __pycache__/
 *.py[cod]
 *$py.class
-
+experiments/wandb/
+notebooks/outputs/error_3d/temp_images
 # C extensions
 *.so
 
