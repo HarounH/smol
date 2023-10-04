@@ -7,6 +7,26 @@ import numpy as np
 LILAC_RGB = [200/255., 162/255., 200/255.]
 
 
+def register_seaborn_palettes() -> None:
+    # modifies seaborn color palettes registry in place
+    # to add a new
+    from seaborn.palettes import SEABORN_PALETTES, QUAL_PALETTE_SIZES
+    SEABORN_PALETTES["cherry_blossoms"] = [
+        # https://www.color-hex.com/color-palette/19094
+        "#FF9FD1",
+        "#E8E8E8",
+        "#E2D298",
+        "#8BE6F7",
+        "#1FA9CC",
+        # https://www.color-hex.com/color-palette/20985
+        "#BAE4E5",
+        "#6AC7C9",
+        "#CE2C65",
+        "#2D1700",
+        "#ECECEC",
+    ]
+    QUAL_PALETTE_SIZES["cherry_blossoms"] = len(SEABORN_PALETTES["cherry_blossoms"])
+
 @torch.no_grad()
 def plot1d(x: torch.Tensor, y: torch.Tensor, threshold: Optional[Union[List[float], float]], return_np: bool = True) -> Optional[np.ndarray]:
     if threshold is None:
