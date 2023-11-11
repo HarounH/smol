@@ -95,6 +95,8 @@ def run(
                 "implicitly_estimated_threshold": implicitly_estimated_threshold,
                 "loss": losses[-1],
                 "step": step,
+                "bias": classifier.bias.cpu().item() if bias else 1.0,
+                "weight": classifier.weight.cpu().item(),
             })
         pbar.set_description(f"[{epoch}] loss: {np.mean(losses):.4f}")
     run.finish()
@@ -127,13 +129,13 @@ def _get_threshold(threshold_type: str, x: torch.Tensor) -> float:
 
 
 if __name__ == "__main__":
-    group = "v10_mega_sweep"
+    group = "v11_sweep"
     # get_batch_size = lambda n: 64
     batch_sizes = [0.01, 0.02, 0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 1.0]
     ns = [128, 512, 2048, 8192, 2 * 8192]
     threshold_types = ["median", "randn_0.25"] #, "constant_0", ]
     lrs = [1e-2, 1e-1, 0.5, 1, 1.5, 2.0]
-    biases = [True, False]
+    biases = [True]
     n_runs = 1
     for run_idx in range(n_runs):
         for n in ns:
