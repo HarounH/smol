@@ -24,6 +24,7 @@ def run(
     n_epochs: int,
     lr: float,  # constant.
     threshold_type: str,
+    weight_decay: float = 0.0,
     bias: bool = False,
     group: str = "debug",
     run_idx: int = 0,
@@ -56,6 +57,7 @@ def run(
             "threshold_upper": acceptable_threshold_range[1],
             "run_idx": run_idx,
             "device": device,
+            "weight_decay": weight_decay,
         }
     )
 
@@ -72,7 +74,7 @@ def run(
 
     classifier = nn.Linear(1, 1, bias=bias).to(device=device)
 
-    optimizer = torch.optim.SGD(classifier.parameters(), lr=lr)
+    optimizer = torch.optim.SGD(classifier.parameters(), lr=lr, weight_decay=weight_decay)
     bce = nn.BCEWithLogitsLoss()
     wandb.watch(classifier, log_freq=1, log="all")
     classifier.train()
@@ -129,32 +131,51 @@ def _get_threshold(threshold_type: str, x: torch.Tensor) -> float:
 
 
 if __name__ == "__main__":
-    group = "v11_sweep"
+    group = "v15_sweep_w_decay"
     # get_batch_size = lambda n: 64
-    batch_sizes = [0.01, 0.02, 0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 1.0]
-    ns = [128, 512, 2048, 8192, 2 * 8192]
-    threshold_types = ["median", "randn_0.25"] #, "constant_0", ]
+    batch_sizes = [0.01, 0.05, 0.25, 1.0]
+    ns = [128, 2 * 8192]
+    threshold_types = ["randn_0.25"] #, "constant_0", ]
     lrs = [1e-2, 1e-1, 0.5, 1, 1.5, 2.0]
+    weight_decays = [1e-2, 1e-3, 1e-4, 0.1, 0.5, 1.0, 2.0]
     biases = [True]
     n_runs = 1
+    failures = []
     for run_idx in range(n_runs):
         for n in ns:
             for threshold_type in threshold_types:
                 for lr in lrs:
                     for bias in biases:
                         for batch_size in batch_sizes:
-                            # try:
-                            with nullcontext():
-                                run(
-                                    n=n,
-                                    batch_size=batch_size,
-                                    n_epochs=10,  # dont need to limit, just take earlier results during plotting
-                                    lr=float(lr),
-                                    threshold_type=threshold_type,
-                                    bias=bias,
-                                    group=group,
-                                    run_idx=run_idx,
-                                )
-                            # except:
-                            #     logger.error(f"Failed on {n=} {threshold_type=} {lr=}", exc_info=True)
-                            #     raise
+                            for weight_decay in weight_decays:
+                                try:
+                                    with nullcontext():
+                                        run(
+                                            n=n,
+                                            batch_size=batch_size,
+                                            n_epochs=10,  # dont need to limit, just take earlier results during plotting
+                                            lr=float(lr),
+                                            threshold_type=threshold_type,
+                                            bias=bias,
+                                            group=group,
+                                            run_idx=run_idx,
+                                            weight_decay=weight_decay,
+                                        )
+                                except:
+                                    logger.error(f"Failed on {n=} {threshold_type=} {lr=} {weight_decay=}", exc_info=True)
+                                    failures.append(dict(
+                                        n=n,
+                                        batch_size=batch_size,
+                                        n_epochs=10,  # dont need to limit, just take earlier results during plotting
+                                        lr=float(lr),
+                                        threshold_type=threshold_type,
+                                        bias=bias,
+                                        group=group,
+                                        run_idx=run_idx,
+                                        weight_decay=weight_decay,
+                                    ))
+    for failure in failures:
+        msg = ""
+        for k, v in failure.items():
+            msg += f"{k}: {v} | "
+        logger.info(f"failure: {msg}")
