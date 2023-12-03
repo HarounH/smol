@@ -11,7 +11,8 @@ LOG_COLORS = {
 
 # Custom log format with colors
 LOG_FORMAT = (
-    '[%(levelname).1s:%(asctime)s][%(name)s:%(lineno)d] %(message)s'
+    # '[%(levelname).1s:%(asctime)s][%(name)s:%(lineno)d] %(message)s'
+    '[%(levelname).1s %(name)s:%(lineno)d] %(message)s'
 )
 
 logger_initialized = False
