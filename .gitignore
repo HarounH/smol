@@ -6,7 +6,9 @@ experiments/wandb/
 notebooks/outputs/error_3d/temp_images
 # C extensions
 *.so
-
+*.ncu-rep
+*.nsys-rep
+*.sqlite
 # Distribution / packaging
 .Python
 build/
