@@ -4,6 +4,10 @@ __pycache__/
 *$py.class
 experiments/wandb/
 notebooks/outputs/error_3d/temp_images
+# art specific dirs
+smol/art/.recording_tmp/
+smol/art/outputs/
+
 # C extensions
 *.so
 *.ncu-rep

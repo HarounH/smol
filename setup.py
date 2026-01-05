@@ -7,7 +7,10 @@ setup(
     description="Working project",
     packages=find_packages(include=["smol", "smol.*"]),
     python_requires=">=3.8",
-    install_requires=[],  # list runtime deps here if you have any
+    install_requires=[
+        "imageio>=2.19",
+        "numpy>=1.21",
+        "Pillow>=9.2",
+        "mss>=9.0",
+    ],
 )
-
-
