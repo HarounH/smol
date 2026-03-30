@@ -1,4 +1,3 @@
-# pip install -e .
 from setuptools import setup, find_packages
 
 setup(
@@ -6,11 +5,55 @@ setup(
     version="0.1.0",
     description="Working project",
     packages=find_packages(include=["smol", "smol.*"]),
-    python_requires=">=3.8",
+    python_requires=">=3.10",
     install_requires=[
         "imageio>=2.19",
         "numpy>=1.21",
         "Pillow>=9.2",
         "mss>=9.0",
     ],
+    extras_require={
+        "train": [
+            "torch",
+            "transformers",
+            "datasets",
+            "accelerate",
+            "huggingface_hub",
+            "tokenizers",
+            "sentencepiece",
+            "safetensors",
+            "einops",
+            "scipy",
+            "tqdm",
+        ],
+        "dev": [
+            "ipython",
+            "jupyter",
+            "matplotlib",
+            "wandb",
+            "pytest",
+            "black",
+            "ruff",
+        ],
+        "all": [
+            "torch",
+            "transformers",
+            "datasets",
+            "accelerate",
+            "huggingface_hub",
+            "tokenizers",
+            "sentencepiece",
+            "safetensors",
+            "einops",
+            "scipy",
+            "tqdm",
+            "ipython",
+            "jupyter",
+            "matplotlib",
+            "wandb",
+            "pytest",
+            "black",
+            "ruff",
+        ],
+    },
 )

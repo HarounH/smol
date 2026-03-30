@@ -1,0 +1,14 @@
+transformers
+datasets
+accelerate
+huggingface_hub
+tokenizers
+sentencepiece
+safetensors
+tqdm
+numpy
+scipy
+einops
+matplotlib
+ipython
+jupyter
