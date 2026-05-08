@@ -1,0 +1,68 @@
+from smol.diffusion.text.core.config import LoggingConfig, ProfilingConfig, RunConfig
+from smol.diffusion.text.data import TextDataConfig
+from smol.diffusion.text.core.model import TextDiffusionConfig
+
+
+def make_config() -> RunConfig:
+    return RunConfig(
+        data=TextDataConfig(
+            debug_num_samples=-1,
+            dataset_name="PygTesting/fineweb-sample-1BT",
+            dataset_config_name=None,
+            split="train",
+            batch_size=8,
+            sequence_length=1024,
+            tokenizer_name="char",
+            source_batch_size=0,
+            shuffle=True,
+            drop_last=False,
+            base_seed=1337,
+            num_workers=0,
+            prefetch_factor=2,
+            pin_memory=False,
+            persistent_workers=False,
+        ),
+        model=TextDiffusionConfig(
+            hidden_size=1024,
+            num_layers=24,
+            num_heads=16,
+            dropout=0.1,
+            max_sequence_length=1024,
+            num_diffusion_steps=100,
+            mask_probability=0.8,
+            clean_token_loss_weight=1.0,
+        ),
+        logging=LoggingConfig(
+            log_every=10,
+            preview_corruption_every=100,
+            preview_tokens=126,
+            preview_num_samples=5,
+            wandb_enabled=False,
+            wandb_project="smol-text-diffusion",
+            wandb_entity=None,
+            wandb_name=None,
+            wandb_tags=None,
+        ),
+        profiling=ProfilingConfig(
+            enabled=True,
+            wait_steps=10,
+            warmup_steps=1,
+            active_steps=3,
+            repeat=1,
+            record_shapes=True,
+            profile_memory=True,
+            with_stack=False,
+        ),
+        experiment_name="scale-300m-fineweb-1bt",
+        output_root="runs",
+        resume_date=None,
+        seed=1337,
+        epochs=100000,
+        mixed_precision="bfloat16",
+        grad_accum_steps=2,
+        max_steps=10000,
+        checkpoint_every_steps=1000,
+        lr=5e-5,
+        weight_decay=0.00,
+        device=None,
+    )

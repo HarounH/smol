@@ -1,4 +1,9 @@
-transformers
+# Install torch/triton/flash-attn with conda so the CUDA binaries match:
+#   conda install -n smol -c conda-forge pytorch flash-attn
+# Do not install flash-attn through pip on WSL unless you are prepared to
+# compile it from source.
+
+transformers>=4.46,<5
 datasets
 accelerate
 huggingface_hub
@@ -10,5 +15,7 @@ numpy
 scipy
 einops
 matplotlib
+plotly
+nbformat
 ipython
 jupyter
