@@ -1,3 +1,8 @@
+"""
+python -m smol.diffusion.text.sample \
+--checkpoint-path runs/scale-300m-fineweb-1bt-less-no-drop-gpt2/20260507-073216/checkpoints/final.pt  \
+--input-text "i want to go to the <mask><mask><mask><mask> already! It is already <mask><mask><mask>! Lets go"
+"""
 import argparse
 from collections.abc import Sequence
 
