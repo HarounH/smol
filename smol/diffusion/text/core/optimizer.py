@@ -45,7 +45,9 @@ class AdamW:
             if grad is None:
                 continue
             if grad.is_sparse:
-                raise RuntimeError("sparse gradients are not supported by this AdamW implementation")
+                raise RuntimeError(
+                    "sparse gradients are not supported by this AdamW implementation"
+                )
 
             state = self.state.setdefault(
                 id(param),
@@ -95,8 +97,14 @@ class AdamW:
 
         serialized_state = state_dict.get("state", {})
         self.state = {}
-        for param, (param_id, param_state) in zip(self.params, serialized_state.items()):
+        for param, (param_id, param_state) in zip(
+            self.params, serialized_state.items()
+        ):
             self.state[id(param)] = {
-                "exp_avg": param_state["exp_avg"].to(device=param.device, dtype=param.dtype),
-                "exp_avg_sq": param_state["exp_avg_sq"].to(device=param.device, dtype=param.dtype),
+                "exp_avg": param_state["exp_avg"].to(
+                    device=param.device, dtype=param.dtype
+                ),
+                "exp_avg_sq": param_state["exp_avg_sq"].to(
+                    device=param.device, dtype=param.dtype
+                ),
             }

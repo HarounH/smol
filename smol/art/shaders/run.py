@@ -52,7 +52,6 @@ from PIL import Image
 import moderngl
 import moderngl_window as mglw
 
-
 VERT_SRC = r"""
 #version 330
 in vec2 in_pos;
@@ -100,11 +99,20 @@ def _read_text(path: Path) -> str:
 
 def _looks_like_shadertoy(src: str) -> bool:
     # If it contains mainImage signature, we treat it as Shadertoy style.
-    return re.search(r"\bvoid\s+mainImage\s*\(\s*out\s+vec4\s+\w+\s*,\s*in\s+vec2\s+\w+\s*\)", src) is not None
+    return (
+        re.search(
+            r"\bvoid\s+mainImage\s*\(\s*out\s+vec4\s+\w+\s*,\s*in\s+vec2\s+\w+\s*\)",
+            src,
+        )
+        is not None
+    )
 
 
 def _has_fragment_main(src: str) -> bool:
-    return re.search(r"\bvoid\s+main\s*\(\s*\)", src) is not None and re.search(r"\bout\s+vec4\s+\w+\s*;", src) is not None
+    return (
+        re.search(r"\bvoid\s+main\s*\(\s*\)", src) is not None
+        and re.search(r"\bout\s+vec4\s+\w+\s*;", src) is not None
+    )
 
 
 def build_fragment_shader(user_src: str) -> str:
@@ -115,14 +123,24 @@ def build_fragment_shader(user_src: str) -> str:
     """
     if _looks_like_shadertoy(user_src):
         # Strip any leading #version to avoid duplicates.
-        user_src_wo_version = re.sub(r"^\s*#version\s+\d+\s*\n", "", user_src, flags=re.MULTILINE)
-        return FRAG_WRAPPER_PREFIX + "\n" + user_src_wo_version + "\n" + FRAG_WRAPPER_SUFFIX
+        user_src_wo_version = re.sub(
+            r"^\s*#version\s+\d+\s*\n", "", user_src, flags=re.MULTILINE
+        )
+        return (
+            FRAG_WRAPPER_PREFIX
+            + "\n"
+            + user_src_wo_version
+            + "\n"
+            + FRAG_WRAPPER_SUFFIX
+        )
 
     if _has_fragment_main(user_src):
         return user_src
 
     # Fallback: assume they wrote shader code that sets fragColor in mainImage-like style.
-    user_src_wo_version = re.sub(r"^\s*#version\s+\d+\s*\n", "", user_src, flags=re.MULTILINE)
+    user_src_wo_version = re.sub(
+        r"^\s*#version\s+\d+\s*\n", "", user_src, flags=re.MULTILINE
+    )
     return FRAG_WRAPPER_PREFIX + "\n" + user_src_wo_version + "\n" + FRAG_WRAPPER_SUFFIX
 
 
@@ -165,7 +183,12 @@ class MouseState:
         # moderngl_window gives mouse with origin top-left, so flip y.
         y_flipped = float(h) - float(self.y)
         if self.down:
-            return (float(self.x), y_flipped, float(self.click_x), float(h) - float(self.click_y))
+            return (
+                float(self.x),
+                y_flipped,
+                float(self.click_x),
+                float(h) - float(self.click_y),
+            )
         # When not pressed, zw are negative.
         return (float(self.x), y_flipped, -1.0, -1.0)
 
@@ -192,10 +215,25 @@ class ShaderToyRunner(mglw.WindowConfig):
         self._mouse = MouseState()
 
         # Fullscreen quad (two triangles)
-        vbo = self.ctx.buffer(np.array([
-            -1, -1,  1, -1, -1,  1,
-            -1,  1,  1, -1,  1,  1,
-        ], dtype="f4").tobytes())
+        vbo = self.ctx.buffer(
+            np.array(
+                [
+                    -1,
+                    -1,
+                    1,
+                    -1,
+                    -1,
+                    1,
+                    -1,
+                    1,
+                    1,
+                    -1,
+                    1,
+                    1,
+                ],
+                dtype="f4",
+            ).tobytes()
+        )
 
         self._vbo = vbo
         self._vao = None
@@ -310,25 +348,44 @@ class ShaderToyRunner(mglw.WindowConfig):
 
 
 def main():
-    ap = argparse.ArgumentParser(description="Run Shadertoy-like GLSL fragment shaders in Python (ModernGL).")
+    ap = argparse.ArgumentParser(
+        description="Run Shadertoy-like GLSL fragment shaders in Python (ModernGL)."
+    )
     ap.add_argument("shader", nargs="?", help="Path to shader")
     ap.add_argument("--shader", dest="shader_flag", help="Path to shader")
-    ap.add_argument("--size", type=int, nargs=2, default=[1280, 720], metavar=("W", "H"))
+    ap.add_argument(
+        "--size", type=int, nargs=2, default=[1280, 720], metavar=("W", "H")
+    )
     ap.add_argument("--title", type=str, default="ShaderToy Runner (Python)")
     ap.add_argument("--fps", type=int, default=0, help="Cap FPS (0 = uncapped)")
     ap.add_argument("--no-vsync", action="store_true", help="Disable vsync")
-    ap.add_argument("--channel0", type=str, default=None, help="Texture path for iChannel0")
-    ap.add_argument("--channel1", type=str, default=None, help="Texture path for iChannel1")
-    ap.add_argument("--channel2", type=str, default=None, help="Texture path for iChannel2")
-    ap.add_argument("--channel3", type=str, default=None, help="Texture path for iChannel3")
+    ap.add_argument(
+        "--channel0", type=str, default=None, help="Texture path for iChannel0"
+    )
+    ap.add_argument(
+        "--channel1", type=str, default=None, help="Texture path for iChannel1"
+    )
+    ap.add_argument(
+        "--channel2", type=str, default=None, help="Texture path for iChannel2"
+    )
+    ap.add_argument(
+        "--channel3", type=str, default=None, help="Texture path for iChannel3"
+    )
     args = ap.parse_args()
 
-    ShaderToyRunner.shader_path = Path(args.shader or args.shader_flag).expanduser().resolve()
+    ShaderToyRunner.shader_path = (
+        Path(args.shader or args.shader_flag).expanduser().resolve()
+    )
     ShaderToyRunner.window_size = (int(args.size[0]), int(args.size[1]))
     ShaderToyRunner.title = args.title
     ShaderToyRunner.vsync = not args.no_vsync
     ShaderToyRunner.target_fps = args.fps if args.fps and args.fps > 0 else None
-    ShaderToyRunner.channels = [args.channel0, args.channel1, args.channel2, args.channel3]
+    ShaderToyRunner.channels = [
+        args.channel0,
+        args.channel1,
+        args.channel2,
+        args.channel3,
+    ]
 
     if not ShaderToyRunner.shader_path.exists():
         print(f"Shader not found: {ShaderToyRunner.shader_path}", file=sys.stderr)

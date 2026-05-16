@@ -8,7 +8,6 @@ from typing import Callable, Dict, Optional, Tuple
 import torch
 import torch.nn.functional as F
 
-
 # -------------------------------
 # Utilities
 # -------------------------------
@@ -16,7 +15,9 @@ import torch.nn.functional as F
 
 def ensure_cuda(device: str) -> torch.device:
     if device.startswith("cuda") and not torch.cuda.is_available():
-        raise RuntimeError("CUDA requested but not available. Set --device cpu or install CUDA.")
+        raise RuntimeError(
+            "CUDA requested but not available. Set --device cpu or install CUDA."
+        )
     return torch.device(device)
 
 
@@ -30,7 +31,9 @@ def get_dtype(dtype_str: str) -> torch.dtype:
         "bfloat16": torch.bfloat16,
     }
     if dtype_str.lower() not in mapping:
-        raise ValueError(f"Unsupported dtype: {dtype_str}. Choose from fp32, fp16, bf16.")
+        raise ValueError(
+            f"Unsupported dtype: {dtype_str}. Choose from fp32, fp16, bf16."
+        )
     return mapping[dtype_str.lower()]
 
 
@@ -56,7 +59,9 @@ def format_num(x: float) -> str:
 # -------------------------------
 
 
-def attention_naive(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, causal: bool = False) -> torch.Tensor:
+def attention_naive(
+    q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, causal: bool = False
+) -> torch.Tensor:
     """
     q, k, v: [batch, heads, seq_len, head_dim]
     returns: [batch, heads, seq_len, head_dim]
@@ -66,21 +71,27 @@ def attention_naive(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, causal: b
     if causal:
         # Mask out future positions
         seq_len = q.size(-2)
-        mask = torch.triu(torch.ones(seq_len, seq_len, device=q.device, dtype=torch.bool), diagonal=1)
-        attn_scores = attn_scores.masked_fill(mask, float('-inf'))
+        mask = torch.triu(
+            torch.ones(seq_len, seq_len, device=q.device, dtype=torch.bool), diagonal=1
+        )
+        attn_scores = attn_scores.masked_fill(mask, float("-inf"))
     attn_probs = torch.softmax(attn_scores, dim=-1)
     out = torch.matmul(attn_probs, v)
     return out
 
 
-def attention_sdp(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, causal: bool = False) -> torch.Tensor:
+def attention_sdp(
+    q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, causal: bool = False
+) -> torch.Tensor:
     """
     Wrapper around PyTorch scaled_dot_product_attention (PyTorch >= 2.0).
     Uses is_causal flag for causal masking.
     """
     # PyTorch expects shape [batch, heads, seq, dim] or [seq, batch, heads, dim]?
     # F.scaled_dot_product_attention expects [batch, heads, seq, dim] consistently when using the functional.
-    return F.scaled_dot_product_attention(q, k, v, attn_mask=None, dropout_p=0.0, is_causal=causal)
+    return F.scaled_dot_product_attention(
+        q, k, v, attn_mask=None, dropout_p=0.0, is_causal=causal
+    )
 
 
 # -------------------------------
@@ -96,7 +107,9 @@ class BenchmarkResult:
     tflops: Optional[float]
 
 
-def measure_gpu_time(fn: Callable[[], torch.Tensor], iters: int, warmup: int) -> Tuple[float, torch.Tensor]:
+def measure_gpu_time(
+    fn: Callable[[], torch.Tensor], iters: int, warmup: int
+) -> Tuple[float, torch.Tensor]:
     # Warmup
     with torch.no_grad():
         for _ in range(max(0, warmup)):
@@ -155,7 +168,9 @@ def benchmark_impl(
     # small use to keep compiler from removing work
     if out is not None:
         _ = float(out[0, 0, 0, 0].detach().float().cpu())
-    return BenchmarkResult(name=name, ms_per_iter=ms_per_iter, iters=iters, tflops=tflops)
+    return BenchmarkResult(
+        name=name, ms_per_iter=ms_per_iter, iters=iters, tflops=tflops
+    )
 
 
 # -------------------------------
@@ -164,18 +179,29 @@ def benchmark_impl(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="CUDA benchmark for softmax dot-product attention (forward only)")
+    parser = argparse.ArgumentParser(
+        description="CUDA benchmark for softmax dot-product attention (forward only)"
+    )
     parser.add_argument("--batch", type=int, default=4)
     parser.add_argument("--seq", type=int, default=1024)
     parser.add_argument("--heads", type=int, default=8)
     parser.add_argument("--dim", type=int, default=64)
-    parser.add_argument("--dtype", type=str, default="bf16", choices=["fp32", "fp16", "bf16", "float32", "float16", "bfloat16"])
+    parser.add_argument(
+        "--dtype",
+        type=str,
+        default="bf16",
+        choices=["fp32", "fp16", "bf16", "float32", "float16", "bfloat16"],
+    )
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--causal", action="store_true")
     parser.add_argument("--iters", type=int, default=200)
     parser.add_argument("--warmup", type=int, default=50)
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--compile", action="store_true", help="Use torch.compile for the naive implementation if available")
+    parser.add_argument(
+        "--compile",
+        action="store_true",
+        help="Use torch.compile for the naive implementation if available",
+    )
     args = parser.parse_args()
 
     set_determinism(args.seed)
@@ -189,13 +215,19 @@ def main() -> None:
     if device.type == "cuda":
         print("CUDA available:", torch.cuda.is_available())
         print("Device:", torch.cuda.get_device_name(device))
-        print("Compute capability:", getattr(torch.cuda.get_device_properties(device), "major", "?"), getattr(torch.cuda.get_device_properties(device), "minor", "?"))
+        print(
+            "Compute capability:",
+            getattr(torch.cuda.get_device_properties(device), "major", "?"),
+            getattr(torch.cuda.get_device_properties(device), "minor", "?"),
+        )
         print("cuDNN:", torch.backends.cudnn.version())
     else:
         print("Running on CPU")
 
     batch, seq, heads, dim = args.batch, args.seq, args.heads, args.dim
-    print(f"Config: B={batch}, H={heads}, S={seq}, D={dim}, dtype={dtype}, causal={args.causal}")
+    print(
+        f"Config: B={batch}, H={heads}, S={seq}, D={dim}, dtype={dtype}, causal={args.causal}"
+    )
 
     # Create inputs
     q = torch.randn(batch, heads, seq, dim, device=device, dtype=dtype)
@@ -214,7 +246,7 @@ def main() -> None:
     flops = compute_attention_flops(batch, heads, seq, dim)
 
     # Warm up CUDA context once with a simple op to avoid context creation in timings
-    _ = (q @ k.transpose(-1, -2))
+    _ = q @ k.transpose(-1, -2)
     cuda_synchronize()
 
     results = []
@@ -271,5 +303,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-

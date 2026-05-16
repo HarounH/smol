@@ -50,7 +50,10 @@ class DebuggingDataset(Dataset):
 
     def __getitem__(self, index: int | list[int]) -> dict[str, Any]:
         if isinstance(index, int):
-            text = f"Sample {index}: " + "The quick brown fox jumps over the lazy dog. " * 10
+            text = (
+                f"Sample {index}: "
+                + "The quick brown fox jumps over the lazy dog. " * 10
+            )
             return {"text": text[: self.sequence_length]}
         else:
             return {"text": [self[i]["text"] for i in index]}
@@ -60,7 +63,10 @@ class ResumableTextDataLoader:
     def __init__(self, config: TextDataConfig):
         self.config = config
         if config.debug_num_samples > 0:
-            self.dataset = DebuggingDataset(num_samples=config.debug_num_samples, sequence_length=config.sequence_length)
+            self.dataset = DebuggingDataset(
+                num_samples=config.debug_num_samples,
+                sequence_length=config.sequence_length,
+            )
         else:
             load_kwargs: dict[str, Any] = {"split": config.split}
             if config.dataset_config_name is not None:
@@ -123,15 +129,21 @@ class ResumableTextDataLoader:
 
     def load_state_dict(self, state: dict[str, Any]) -> None:
         self.epoch = int(state["epoch"])
-        self.source_batches_consumed_in_epoch = int(state.get("source_batches_consumed_in_epoch", 0))
+        self.source_batches_consumed_in_epoch = int(
+            state.get("source_batches_consumed_in_epoch", 0)
+        )
         self.batches_yielded_in_epoch = int(state["batches_yielded_in_epoch"])
         self.global_step = int(state["global_step"])
         self.sequence_buffer = [
             [int(token_id) for token_id in token_ids]
             for token_ids in state.get("sequence_buffer", [])
         ]
-        self.token_buffer = [int(token_id) for token_id in state.get("token_buffer", [])]
-        self.document_id_buffer = [int(document_id) for document_id in state.get("document_id_buffer", [])]
+        self.token_buffer = [
+            int(token_id) for token_id in state.get("token_buffer", [])
+        ]
+        self.document_id_buffer = [
+            int(document_id) for document_id in state.get("document_id_buffer", [])
+        ]
         self.next_document_id = int(state.get("next_document_id", 0))
 
     def save_checkpoint(self, checkpoint_path: str | Path) -> None:
@@ -183,7 +195,10 @@ class ResumableTextDataLoader:
                 if len(sequence) < self.config.sequence_length:
                     sequence = [
                         *sequence,
-                        *([self.tokenizer.pad_token_id] * (self.config.sequence_length - len(sequence))),
+                        *(
+                            [self.tokenizer.pad_token_id]
+                            * (self.config.sequence_length - len(sequence))
+                        ),
                     ]
                 sequences.append(sequence)
         return sequences
@@ -226,10 +241,14 @@ class ResumableTextDataLoader:
             "sequence_lengths": sequence_lengths,
         }
 
-    def _sequence_lengths_from_document_ids(self, document_ids: list[int]) -> list[list[int]]:
+    def _sequence_lengths_from_document_ids(
+        self, document_ids: list[int]
+    ) -> list[list[int]]:
         sequence_lengths: list[list[int]] = []
         for row_start in range(0, len(document_ids), self.config.sequence_length):
-            row_document_ids = document_ids[row_start : row_start + self.config.sequence_length]
+            row_document_ids = document_ids[
+                row_start : row_start + self.config.sequence_length
+            ]
             row_lengths: list[int] = []
             current_document_id: int | None = None
             current_length = 0
@@ -276,7 +295,9 @@ class ResumableTextDataLoader:
                     input_ids = tensor_batch["input_ids"]
                     token_mask = tensor_batch["token_mask"]
                     sequence_lengths = tensor_batch["sequence_lengths"]
-                    buffered_sequences = len(self.token_buffer) // self.config.sequence_length
+                    buffered_sequences = (
+                        len(self.token_buffer) // self.config.sequence_length
+                    )
                 else:
                     batch_sequences = self.sequence_buffer[: self.config.batch_size]
                     del self.sequence_buffer[: self.config.batch_size]
@@ -287,7 +308,9 @@ class ResumableTextDataLoader:
                     buffered_sequences = len(self.sequence_buffer)
                 padding_tokens = int((~token_mask).sum().item())
                 non_padding_tokens = int(token_mask.sum().item())
-                sequence_preview = self.tokenizer.decode(input_ids[0].tolist(), skip_special_tokens=False)
+                sequence_preview = self.tokenizer.decode(
+                    input_ids[0].tolist(), skip_special_tokens=False
+                )
                 batch_index = self.batches_yielded_in_epoch
                 global_step = self.global_step
 
@@ -332,7 +355,9 @@ class ResumableTextDataLoader:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Iterate over WikiText with a resumable PyTorch dataloader.")
+    parser = argparse.ArgumentParser(
+        description="Iterate over WikiText with a resumable PyTorch dataloader."
+    )
     parser.add_argument("--dataset-name", default="Salesforce/wikitext")
     parser.add_argument("--dataset-config-name", default="wikitext-2-raw-v1")
     parser.add_argument("--dataset-data-files", default=None)
@@ -340,12 +365,22 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--sequence-length", type=int, default=128)
     parser.add_argument("--tokenizer-name", default="char")
-    parser.add_argument("--source-batch-size", type=int, default=0, help="Number of raw documents to tokenize at once. 0 reuses --batch-size.")
+    parser.add_argument(
+        "--source-batch-size",
+        type=int,
+        default=0,
+        help="Number of raw documents to tokenize at once. 0 reuses --batch-size.",
+    )
     parser.add_argument("--num-workers", type=int, default=0)
     parser.add_argument("--prefetch-factor", type=int, default=2)
     parser.add_argument("--seed", type=int, default=1337)
     parser.add_argument("--max-epochs", type=int, default=1)
-    parser.add_argument("--save-every", type=int, default=0, help="Save checkpoint every N yielded batches. 0 disables it.")
+    parser.add_argument(
+        "--save-every",
+        type=int,
+        default=0,
+        help="Save checkpoint every N yielded batches. 0 disables it.",
+    )
     parser.add_argument("--checkpoint-path", default="checkpoints/text_dataloader.pt")
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--drop-last", action="store_true")
@@ -402,7 +437,9 @@ def main() -> None:
             "shuffle": config.shuffle,
             "seed": config.base_seed,
             "num_workers": config.num_workers,
-            "prefetch_factor": config.prefetch_factor if config.num_workers > 0 else None,
+            "prefetch_factor": (
+                config.prefetch_factor if config.num_workers > 0 else None
+            ),
             "dense_packing": config.dense_packing,
             "checkpoint_path": args.checkpoint_path,
             "starting_epoch": loader.epoch,

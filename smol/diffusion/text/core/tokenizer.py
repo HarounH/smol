@@ -96,8 +96,12 @@ class HuggingFaceTokenizer:
     def decode(self, token_ids: list[int], skip_special_tokens: bool = False) -> str:
         return self.tokenizer.decode(token_ids, skip_special_tokens=skip_special_tokens)
 
-    def batch_decode(self, batch_token_ids: list[list[int]], skip_special_tokens: bool = False) -> list[str]:
-        return self.tokenizer.batch_decode(batch_token_ids, skip_special_tokens=skip_special_tokens)
+    def batch_decode(
+        self, batch_token_ids: list[list[int]], skip_special_tokens: bool = False
+    ) -> list[str]:
+        return self.tokenizer.batch_decode(
+            batch_token_ids, skip_special_tokens=skip_special_tokens
+        )
 
     def __call__(
         self,
@@ -120,9 +124,13 @@ class HuggingFaceTokenizer:
             ]
             encoded["input_ids"] = input_ids
             if return_attention_mask:
-                encoded["attention_mask"] = [[1] * len(token_ids) for token_ids in input_ids]
+                encoded["attention_mask"] = [
+                    [1] * len(token_ids) for token_ids in input_ids
+                ]
             if return_token_type_ids:
-                encoded["token_type_ids"] = [[0] * len(token_ids) for token_ids in input_ids]
+                encoded["token_type_ids"] = [
+                    [0] * len(token_ids) for token_ids in input_ids
+                ]
         return dict(encoded)
 
 
@@ -151,11 +159,20 @@ class CharTokenizer:
             )
         self.reserved_special_tokens = [
             f"<special_{index:03d}>"
-            for index in range(len(self.named_special_tokens), self.config.special_token_reserve_size)
+            for index in range(
+                len(self.named_special_tokens), self.config.special_token_reserve_size
+            )
         ]
-        self.special_tokens = [*self.named_special_tokens, *self.reserved_special_tokens]
-        self._special_token_to_id = {token: token_id for token_id, token in enumerate(self.special_tokens)}
-        self._special_tokens_by_length = sorted(self.special_tokens, key=len, reverse=True)
+        self.special_tokens = [
+            *self.named_special_tokens,
+            *self.reserved_special_tokens,
+        ]
+        self._special_token_to_id = {
+            token: token_id for token_id, token in enumerate(self.special_tokens)
+        }
+        self._special_tokens_by_length = sorted(
+            self.special_tokens, key=len, reverse=True
+        )
         self.pad_token = self.config.pad_token
         self.bos_token = self.config.bos_token
         self.eos_token = self.config.eos_token
@@ -173,7 +190,9 @@ class CharTokenizer:
         self.special_token_reserve_size = self.config.special_token_reserve_size
 
         self._char_to_id = {chr(i): i + len(self.special_tokens) for i in range(256)}
-        self._id_to_char = {token_id: char for char, token_id in self._char_to_id.items()}
+        self._id_to_char = {
+            token_id: char for char, token_id in self._char_to_id.items()
+        }
         self.vocab_size = len(self.special_tokens) + len(self._char_to_id)
         self.valid_token_ids = [
             *range(len(self.special_tokens), self.vocab_size),
@@ -212,8 +231,13 @@ class CharTokenizer:
             pieces.append(self._special_token_for_id(token_id))
         return "".join(pieces)
 
-    def batch_decode(self, batch_token_ids: list[list[int]], skip_special_tokens: bool = False) -> list[str]:
-        return [self.decode(token_ids, skip_special_tokens=skip_special_tokens) for token_ids in batch_token_ids]
+    def batch_decode(
+        self, batch_token_ids: list[list[int]], skip_special_tokens: bool = False
+    ) -> list[str]:
+        return [
+            self.decode(token_ids, skip_special_tokens=skip_special_tokens)
+            for token_ids in batch_token_ids
+        ]
 
     def __call__(
         self,
@@ -222,7 +246,9 @@ class CharTokenizer:
         return_attention_mask: bool = False,
         return_token_type_ids: bool = False,
     ) -> dict[str, list[list[int]]]:
-        encoded = [self.encode(text, add_special_tokens=add_special_tokens) for text in texts]
+        encoded = [
+            self.encode(text, add_special_tokens=add_special_tokens) for text in texts
+        ]
         output: dict[str, list[list[int]]] = {"input_ids": encoded}
         if return_attention_mask:
             output["attention_mask"] = [[1] * len(token_ids) for token_ids in encoded]
@@ -271,7 +297,7 @@ if __name__ == "__main__":
         return_token_type_ids=False,
     )["input_ids"]
 
-    for (txt, toks) in zip([text, text], token_ids):
+    for txt, toks in zip([text, text], token_ids):
         print(f"{txt}")
         print(f"{toks}")
         print(f"{tokenizer.batch_decode([toks])}")

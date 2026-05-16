@@ -14,7 +14,9 @@ def find_repo_root(start: Path | None = None) -> Path:
     for candidate in [current, *current.parents]:
         if (candidate / "smol").exists() and (candidate / "runs").exists():
             return candidate
-    raise FileNotFoundError("Could not find repo root containing both 'smol/' and 'runs/'.")
+    raise FileNotFoundError(
+        "Could not find repo root containing both 'smol/' and 'runs/'."
+    )
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -39,7 +41,9 @@ def discover_runs(runs_root: Path) -> list[dict[str, Any]]:
         return runs
 
     for experiment_dir in sorted(path for path in runs_root.iterdir() if path.is_dir()):
-        for run_dir in sorted(path for path in experiment_dir.iterdir() if path.is_dir()):
+        for run_dir in sorted(
+            path for path in experiment_dir.iterdir() if path.is_dir()
+        ):
             logs_dir = run_dir / "logs"
             summary_path = run_dir / "run_summary.json"
             metrics_path = logs_dir / "train_metrics.jsonl"
@@ -48,7 +52,11 @@ def discover_runs(runs_root: Path) -> list[dict[str, Any]]:
             summary = load_json(summary_path) if summary_path.exists() else {}
             metrics = load_jsonl(metrics_path)
             events = load_jsonl(events_path)
-            checkpoint_steps = [event.get("step") for event in events if event.get("message") == "checkpoint_saved"]
+            checkpoint_steps = [
+                event.get("step")
+                for event in events
+                if event.get("message") == "checkpoint_saved"
+            ]
 
             runs.append(
                 {
@@ -85,7 +93,9 @@ def select_runs(
 ) -> list[dict[str, Any]]:
     filtered = runs
     if experiment_name is not None:
-        filtered = [run for run in filtered if run["experiment_name"] == experiment_name]
+        filtered = [
+            run for run in filtered if run["experiment_name"] == experiment_name
+        ]
     if run_stamps:
         wanted = set(run_stamps)
         filtered = [run for run in filtered if run["run_stamp"] in wanted]
@@ -160,7 +170,9 @@ def show_figure(fig: "go.Figure") -> None:
         display(HTML(fig.to_html(include_plotlyjs="cdn", full_html=False)))
 
 
-def add_checkpoint_lines(fig: "go.Figure", run: dict[str, Any], row: int, col: int, color: str) -> None:
+def add_checkpoint_lines(
+    fig: "go.Figure", run: dict[str, Any], row: int, col: int, color: str
+) -> None:
     for step in run["checkpoint_steps"]:
         if step is None:
             continue
@@ -186,7 +198,9 @@ def plot_metric_grid(
     import plotly.graph_objects as go
     from plotly.subplots import make_subplots
 
-    fig = make_subplots(rows=len(metric_keys), cols=1, shared_xaxes=True, subplot_titles=metric_keys)
+    fig = make_subplots(
+        rows=len(metric_keys), cols=1, shared_xaxes=True, subplot_titles=metric_keys
+    )
     palette = [
         "#1f77b4",
         "#d62728",
@@ -226,7 +240,11 @@ def plot_metric_grid(
             add_checkpoint_lines(fig, run, row_index, 1, color)
 
     fig.update_layout(
-        title=f"{title} (gaussian sigma={smoothing_sigma})" if smoothing_sigma > 0 else title,
+        title=(
+            f"{title} (gaussian sigma={smoothing_sigma})"
+            if smoothing_sigma > 0
+            else title
+        ),
         height=max(1, len(metric_keys)) * height_per_row,
         template="plotly_white",
         hovermode="x unified",
@@ -298,7 +316,11 @@ def plot_metric_panel_grid(
             add_checkpoint_lines(fig, run, row_index, col_index, color)
 
     fig.update_layout(
-        title=f"{title} (gaussian sigma={smoothing_sigma})" if smoothing_sigma > 0 else title,
+        title=(
+            f"{title} (gaussian sigma={smoothing_sigma})"
+            if smoothing_sigma > 0
+            else title
+        ),
         height=max(1, rows) * height_per_row,
         template="plotly_white",
         hovermode="x unified",

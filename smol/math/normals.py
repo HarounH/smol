@@ -26,34 +26,82 @@ import matplotlib.pyplot as plt
 
 
 def parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="Plot sum of independent normals and save figure.")
+    p = argparse.ArgumentParser(
+        description="Plot sum of independent normals and save figure."
+    )
     p.add_argument("--m", type=int, default=None, help="Number of component normals.")
-    p.add_argument("--mus", type=float, nargs="*", default=None,
-                   help="List of means μ_i. Example: --mus 0 1 -0.5")
-    p.add_argument("--sigmas", type=float, nargs="*", default=None,
-                   help="List of std devs σ_i (>0). Example: --sigmas 1 0.5 2")
+    p.add_argument(
+        "--mus",
+        type=float,
+        nargs="*",
+        default=None,
+        help="List of means μ_i. Example: --mus 0 1 -0.5",
+    )
+    p.add_argument(
+        "--sigmas",
+        type=float,
+        nargs="*",
+        default=None,
+        help="List of std devs σ_i (>0). Example: --sigmas 1 0.5 2",
+    )
 
-    p.add_argument("--mu-range", type=float, nargs=2, metavar=("LOW", "HIGH"), default=[-1.0, 1.0],
-                   help="If mus not provided, sample μ_i uniformly from [LOW, HIGH].")
-    p.add_argument("--sigma-range", type=float, nargs=2, metavar=("LOW", "HIGH"), default=[0.5, 2.0],
-                   help="If sigmas not provided, sample σ_i uniformly from [LOW, HIGH]. Must be >0.")
+    p.add_argument(
+        "--mu-range",
+        type=float,
+        nargs=2,
+        metavar=("LOW", "HIGH"),
+        default=[-1.0, 1.0],
+        help="If mus not provided, sample μ_i uniformly from [LOW, HIGH].",
+    )
+    p.add_argument(
+        "--sigma-range",
+        type=float,
+        nargs=2,
+        metavar=("LOW", "HIGH"),
+        default=[0.5, 2.0],
+        help="If sigmas not provided, sample σ_i uniformly from [LOW, HIGH]. Must be >0.",
+    )
 
     p.add_argument("--samples", type=int, default=200_000, help="Monte Carlo samples.")
-    p.add_argument("--bins", type=int, default=120, help="Histogram bins for densities.")
+    p.add_argument(
+        "--bins", type=int, default=120, help="Histogram bins for densities."
+    )
     p.add_argument("--seed", type=int, default=0, help="RNG seed.")
 
-    p.add_argument("--show-components", type=int, default=3,
-                   help="How many individual component distributions to visualize (PDF + sampled hist).")
-    p.add_argument("--component-mode", choices=["first", "random", "largest_var"], default="largest_var",
-                   help="Which components to show if show-components < m.")
-    p.add_argument("--component-samples", type=int, default=60_000,
-                   help="Samples per shown component for its histogram (kept smaller for speed/clarity).")
+    p.add_argument(
+        "--show-components",
+        type=int,
+        default=3,
+        help="How many individual component distributions to visualize (PDF + sampled hist).",
+    )
+    p.add_argument(
+        "--component-mode",
+        choices=["first", "random", "largest_var"],
+        default="largest_var",
+        help="Which components to show if show-components < m.",
+    )
+    p.add_argument(
+        "--component-samples",
+        type=int,
+        default=60_000,
+        help="Samples per shown component for its histogram (kept smaller for speed/clarity).",
+    )
 
-    p.add_argument("--xlim", type=float, nargs=2, default=None, metavar=("XMIN", "XMAX"),
-                   help="Optional x-axis limits.")
+    p.add_argument(
+        "--xlim",
+        type=float,
+        nargs=2,
+        default=None,
+        metavar=("XMIN", "XMAX"),
+        help="Optional x-axis limits.",
+    )
     p.add_argument("--dpi", type=int, default=160, help="Output image DPI.")
-    p.add_argument("--out", type=str, default=None,
-                   help="Output filename (PNG). Default: sum_normals_m{m}.png")
+    p.add_argument(
+        "--out",
+        type=str,
+        default=None,
+        help="Output filename (PNG). Default: sum_normals_m{m}.png",
+    )
     return p.parse_args()
 
 
@@ -67,7 +115,9 @@ def resolve_params(
 ) -> Tuple[np.ndarray, np.ndarray]:
     if mus is not None and sigmas is not None:
         if len(mus) != len(sigmas):
-            raise ValueError(f"--mus length ({len(mus)}) must match --sigmas length ({len(sigmas)}).")
+            raise ValueError(
+                f"--mus length ({len(mus)}) must match --sigmas length ({len(sigmas)})."
+            )
         m = len(mus)
         if m_arg is not None and m_arg != m:
             raise ValueError(f"--m ({m_arg}) does not match len(--mus/--sigmas) ({m}).")
@@ -110,7 +160,7 @@ def choose_component_indices(
     if mode == "random":
         return rng.choice(m, size=k, replace=False)
     # largest_var
-    return np.argsort(-(sigmas ** 2))[:k]
+    return np.argsort(-(sigmas**2))[:k]
 
 
 def main() -> None:
@@ -133,7 +183,7 @@ def main() -> None:
 
     # Theoretical sum distribution
     sum_mu = float(mus.sum())
-    sum_sigma = float(np.sqrt((sigmas ** 2).sum()))
+    sum_sigma = float(np.sqrt((sigmas**2).sum()))
 
     # Choose components to show
     comp_idx = choose_component_indices(
@@ -162,19 +212,36 @@ def main() -> None:
     fig, ax = plt.subplots(figsize=(10.5, 5.5))
 
     # Sum histogram + theoretical PDF
-    ax.hist(sum_samples, bins=args.bins, density=True, alpha=0.55, label="Sum (samples)")
-    ax.plot(xs, normal_pdf(xs, sum_mu, sum_sigma), linewidth=2.2, label="Sum (theory PDF)")
+    ax.hist(
+        sum_samples, bins=args.bins, density=True, alpha=0.55, label="Sum (samples)"
+    )
+    ax.plot(
+        xs, normal_pdf(xs, sum_mu, sum_sigma), linewidth=2.2, label="Sum (theory PDF)"
+    )
 
     # Individual components: sampled hist (lighter) + PDF (line)
     for j, i in enumerate(comp_idx):
         # fewer samples per component for speed/clarity
-        comp_samples = rng.normal(loc=mus[i], scale=sigmas[i], size=args.component_samples)
-        ax.hist(comp_samples, bins=max(40, args.bins // 3), density=True, alpha=0.18,
-                label=f"Comp {i+1} samples (μ={mus[i]:.2f}, σ={sigmas[i]:.2f})")
-        ax.plot(xs, normal_pdf(xs, float(mus[i]), float(sigmas[i])), linewidth=1.6,
-                label=f"Comp {i+1} PDF")
+        comp_samples = rng.normal(
+            loc=mus[i], scale=sigmas[i], size=args.component_samples
+        )
+        ax.hist(
+            comp_samples,
+            bins=max(40, args.bins // 3),
+            density=True,
+            alpha=0.18,
+            label=f"Comp {i+1} samples (μ={mus[i]:.2f}, σ={sigmas[i]:.2f})",
+        )
+        ax.plot(
+            xs,
+            normal_pdf(xs, float(mus[i]), float(sigmas[i])),
+            linewidth=1.6,
+            label=f"Comp {i+1} PDF",
+        )
 
-    ax.set_title(f"Sum of {m} independent Normals: μ_sum={sum_mu:.3f}, σ_sum={sum_sigma:.3f} (var={sum_sigma**2:.3f})")
+    ax.set_title(
+        f"Sum of {m} independent Normals: μ_sum={sum_mu:.3f}, σ_sum={sum_sigma:.3f} (var={sum_sigma**2:.3f})"
+    )
     ax.set_xlabel("x")
     ax.set_ylabel("density")
     ax.set_xlim(x_min, x_max)

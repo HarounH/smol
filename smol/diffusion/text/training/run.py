@@ -42,7 +42,9 @@ def append_jsonl(path: Path, payload: dict) -> None:
 
 
 def global_batch_size(config: RunConfig) -> int:
-    return config.data.batch_size * config.grad_accum_steps * config.data.sequence_length
+    return (
+        config.data.batch_size * config.grad_accum_steps * config.data.sequence_length
+    )
 
 
 def find_latest_checkpoint(checkpoints_dir: Path) -> Path | None:

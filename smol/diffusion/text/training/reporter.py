@@ -8,7 +8,10 @@ from smol.diffusion.text.core.config import RunConfig
 from smol.diffusion.text.data import ResumableTextDataLoader
 from smol.diffusion.text.core.model import TextDiffusionConfig, TextDiffusionModel
 from smol.diffusion.text.core.optimizer import AdamW
-from smol.diffusion.text.training.runtime import progress_write, resolve_autocast_context
+from smol.diffusion.text.training.runtime import (
+    progress_write,
+    resolve_autocast_context,
+)
 from smol.diffusion.text.sample import sample as sample_text_diffusion
 from smol.diffusion.text.training.run import append_jsonl, save_checkpoint
 from smol.diffusion.text.training.state import OptimizerStepReport, PreviewState
@@ -19,11 +22,18 @@ except ImportError:
     wandb = None
 
 
-def init_wandb(run_config: RunConfig, model_config: TextDiffusionConfig, device: torch.device, run_dir: Path):
+def init_wandb(
+    run_config: RunConfig,
+    model_config: TextDiffusionConfig,
+    device: torch.device,
+    run_dir: Path,
+):
     if not run_config.logging.wandb_enabled:
         return None
     if wandb is None:
-        raise ImportError("wandb logging was requested, but the 'wandb' package is not installed")
+        raise ImportError(
+            "wandb logging was requested, but the 'wandb' package is not installed"
+        )
     return wandb.init(
         project=run_config.logging.wandb_project,
         entity=run_config.logging.wandb_entity,
@@ -104,7 +114,9 @@ def print_mask_preview(
 ) -> None:
     clean_ids = clean_input_ids[sample_index].detach().cpu().tolist()[:max_tokens]
     masked_ids = masked_input_ids[sample_index].detach().cpu().tolist()[:max_tokens]
-    predicted_ids = predicted_input_ids[sample_index].detach().cpu().tolist()[:max_tokens]
+    predicted_ids = (
+        predicted_input_ids[sample_index].detach().cpu().tolist()[:max_tokens]
+    )
     rollout_ids = rollout_input_ids[sample_index].detach().cpu().tolist()[:max_tokens]
     mask = mask_choice[sample_index].detach().cpu().tolist()[:max_tokens]
     timestep = int(timesteps[sample_index].item())
@@ -126,15 +138,42 @@ def print_mask_preview(
     border = f"+-{'-' * label_width}-+-{'-' * value_width}-+"
 
     progress_write(border, progress_bar)
-    progress_write(f"| {'time':<{label_width}} | {truncate_cell(timestamp, value_width)} |", progress_bar)
-    progress_write(f"| {'step':<{label_width}} | {truncate_cell(str(train_step), value_width)} |", progress_bar)
-    progress_write(f"| {'timestep':<{label_width}} | {truncate_cell(str(timestep), value_width)} |", progress_bar)
-    progress_write(f"| {'sample':<{label_width}} | {truncate_cell(str(sample_index), value_width)} |", progress_bar)
-    progress_write(f"| {'clean':<{label_width}} | {truncate_cell(clean_text, value_width)} |", progress_bar)
-    progress_write(f"| {'masked':<{label_width}} | {truncate_cell(masked_text, value_width)} |", progress_bar)
-    progress_write(f"| {'fwd':<{label_width}} | {truncate_cell(predicted_text, value_width)} |", progress_bar)
-    progress_write(f"| {'rollout':<{label_width}} | {truncate_cell(rollout_text, value_width)} |", progress_bar)
-    progress_write(f"| {'mask_cnt':<{label_width}} | {truncate_cell(masked_count_text, value_width)} |", progress_bar)
+    progress_write(
+        f"| {'time':<{label_width}} | {truncate_cell(timestamp, value_width)} |",
+        progress_bar,
+    )
+    progress_write(
+        f"| {'step':<{label_width}} | {truncate_cell(str(train_step), value_width)} |",
+        progress_bar,
+    )
+    progress_write(
+        f"| {'timestep':<{label_width}} | {truncate_cell(str(timestep), value_width)} |",
+        progress_bar,
+    )
+    progress_write(
+        f"| {'sample':<{label_width}} | {truncate_cell(str(sample_index), value_width)} |",
+        progress_bar,
+    )
+    progress_write(
+        f"| {'clean':<{label_width}} | {truncate_cell(clean_text, value_width)} |",
+        progress_bar,
+    )
+    progress_write(
+        f"| {'masked':<{label_width}} | {truncate_cell(masked_text, value_width)} |",
+        progress_bar,
+    )
+    progress_write(
+        f"| {'fwd':<{label_width}} | {truncate_cell(predicted_text, value_width)} |",
+        progress_bar,
+    )
+    progress_write(
+        f"| {'rollout':<{label_width}} | {truncate_cell(rollout_text, value_width)} |",
+        progress_bar,
+    )
+    progress_write(
+        f"| {'mask_cnt':<{label_width}} | {truncate_cell(masked_count_text, value_width)} |",
+        progress_bar,
+    )
     progress_write(border, progress_bar)
     logger.info(
         "mask_preview",
@@ -188,10 +227,15 @@ class TrainReporter:
         self.device = device
         self.metrics_path = run_dirs["logs"] / "train_metrics.jsonl"
 
-    def on_step(self, report: OptimizerStepReport, *, advance_progress: bool = True) -> None:
+    def on_step(
+        self, report: OptimizerStepReport, *, advance_progress: bool = True
+    ) -> None:
         metrics = report.metrics
         append_jsonl(self.metrics_path, metrics)
-        if self.config.logging.log_every > 0 and report.step % self.config.logging.log_every == 0:
+        if (
+            self.config.logging.log_every > 0
+            and report.step % self.config.logging.log_every == 0
+        ):
             self.logger.info("train_step", **metrics)
         self._log_wandb_metrics(metrics)
         if advance_progress:
@@ -205,7 +249,9 @@ class TrainReporter:
             grad_accum_steps=report.metrics["optimization/grad_accum_steps"],
         )
 
-    def maybe_preview(self, *, step: int, model: TextDiffusionModel, preview_state: PreviewState) -> None:
+    def maybe_preview(
+        self, *, step: int, model: TextDiffusionModel, preview_state: PreviewState
+    ) -> None:
         if self.config.logging.preview_corruption_every <= 0:
             return
         if step % self.config.logging.preview_corruption_every != 0:
@@ -213,7 +259,10 @@ class TrainReporter:
 
         stats = preview_state.stats
         predicted_input_ids = stats["logits"].argmax(dim=-1)
-        num_samples = min(self.config.logging.preview_num_samples, preview_state.clean_input_ids.size(0))
+        num_samples = min(
+            self.config.logging.preview_num_samples,
+            preview_state.clean_input_ids.size(0),
+        )
         masked_input_ids = masked_input_ids_from_stats(stats)
         mask_choice = mask_choice_from_stats(stats)
         preview_masked_input_ids = masked_input_ids[:num_samples]
@@ -254,7 +303,9 @@ class TrainReporter:
                 max_tokens=self.config.logging.preview_tokens,
                 progress_bar=self.progress_bar,
             )
-        self._log_wandb_preview(step, preview_state, predicted_input_ids, rollout_input_ids, num_samples)
+        self._log_wandb_preview(
+            step, preview_state, predicted_input_ids, rollout_input_ids, num_samples
+        )
 
     def maybe_checkpoint(
         self,
@@ -264,16 +315,28 @@ class TrainReporter:
         optimizer: AdamW,
         dataloader: ResumableTextDataLoader,
     ) -> None:
-        if self.config.checkpoint_every_steps <= 0 or step % self.config.checkpoint_every_steps != 0:
+        if (
+            self.config.checkpoint_every_steps <= 0
+            or step % self.config.checkpoint_every_steps != 0
+        ):
             return
         checkpoint_path = self.run_dirs["checkpoints"] / f"step_{step:08d}.pt"
-        save_checkpoint(checkpoint_path, self.config, model, optimizer, dataloader, step)
+        save_checkpoint(
+            checkpoint_path, self.config, model, optimizer, dataloader, step
+        )
         progress_write(f"saved checkpoint to {checkpoint_path}", self.progress_bar)
-        self.logger.info("checkpoint_saved", checkpoint_path=str(checkpoint_path), step=step)
+        self.logger.info(
+            "checkpoint_saved", checkpoint_path=str(checkpoint_path), step=step
+        )
         if self.wandb_run is not None:
-            wandb.log({"checkpoint/step": step, "checkpoint/path": str(checkpoint_path)}, step=step)
+            wandb.log(
+                {"checkpoint/step": step, "checkpoint/path": str(checkpoint_path)},
+                step=step,
+            )
 
-    def finish(self, *, final_checkpoint_path: Path, step: int, exit_reason: str) -> None:
+    def finish(
+        self, *, final_checkpoint_path: Path, step: int, exit_reason: str
+    ) -> None:
         if self.wandb_run is None:
             return
         wandb.log(
@@ -322,8 +385,12 @@ class TrainReporter:
         wandb.log(
             {
                 "train/loss": metrics["loss"],
-                "train/mask_rate": metrics.get("mask_rate", metrics.get("corruption_rate", 0.0)),
-                "train/corruption_rate": metrics.get("corruption_rate", metrics.get("mask_rate", 0.0)),
+                "train/mask_rate": metrics.get(
+                    "mask_rate", metrics.get("corruption_rate", 0.0)
+                ),
+                "train/corruption_rate": metrics.get(
+                    "corruption_rate", metrics.get("mask_rate", 0.0)
+                ),
                 "train/padding_fraction": metrics["padding_fraction"],
                 "train/epoch": metrics["epoch"],
                 "train/epoch_progress_pct": metrics["epoch_progress_pct"],
@@ -332,7 +399,9 @@ class TrainReporter:
                 "train/diffusion_timestep_min": metrics["diffusion_timestep_min"],
                 "train/diffusion_timestep_max": metrics["diffusion_timestep_max"],
                 "optimization/lr": metrics["optimization/lr"],
-                "optimization/grad_accum_steps": metrics["optimization/grad_accum_steps"],
+                "optimization/grad_accum_steps": metrics[
+                    "optimization/grad_accum_steps"
+                ],
                 "timing/data_loading_s": metrics["timing/data_loading_s"],
                 "timing/forward_s": metrics["timing/forward_s"],
                 "timing/backward_s": metrics["timing/backward_s"],
@@ -358,11 +427,31 @@ class TrainReporter:
         preview_rows = []
         stats = preview_state.stats
         for sample_index in range(num_samples):
-            clean_ids = preview_state.clean_input_ids[sample_index].detach().cpu().tolist()[: self.config.logging.preview_tokens]
+            clean_ids = (
+                preview_state.clean_input_ids[sample_index]
+                .detach()
+                .cpu()
+                .tolist()[: self.config.logging.preview_tokens]
+            )
             masked_input_ids = masked_input_ids_from_stats(stats)
-            masked_ids = masked_input_ids[sample_index].detach().cpu().tolist()[: self.config.logging.preview_tokens]
-            pred_ids = predicted_input_ids[sample_index].detach().cpu().tolist()[: self.config.logging.preview_tokens]
-            rollout_ids = rollout_input_ids[sample_index].detach().cpu().tolist()[: self.config.logging.preview_tokens]
+            masked_ids = (
+                masked_input_ids[sample_index]
+                .detach()
+                .cpu()
+                .tolist()[: self.config.logging.preview_tokens]
+            )
+            pred_ids = (
+                predicted_input_ids[sample_index]
+                .detach()
+                .cpu()
+                .tolist()[: self.config.logging.preview_tokens]
+            )
+            rollout_ids = (
+                rollout_input_ids[sample_index]
+                .detach()
+                .cpu()
+                .tolist()[: self.config.logging.preview_tokens]
+            )
             preview_rows.append(
                 [
                     step,

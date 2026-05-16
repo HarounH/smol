@@ -58,10 +58,14 @@ def resolve_autocast_context(config: RunConfig, device: torch.device):
     if config.mixed_precision is None:
         return nullcontext()
     if device.type != "cuda":
-        raise ValueError(f"mixed_precision={config.mixed_precision!r} is only supported on cuda devices")
+        raise ValueError(
+            f"mixed_precision={config.mixed_precision!r} is only supported on cuda devices"
+        )
     if config.mixed_precision == "bfloat16":
         if not torch.cuda.is_bf16_supported():
-            raise ValueError("mixed_precision='bfloat16' was requested, but this CUDA device does not support bf16")
+            raise ValueError(
+                "mixed_precision='bfloat16' was requested, but this CUDA device does not support bf16"
+            )
         return torch.autocast(device_type="cuda", dtype=torch.bfloat16)
     if config.mixed_precision == "float16":
         return torch.autocast(device_type="cuda", dtype=torch.float16)

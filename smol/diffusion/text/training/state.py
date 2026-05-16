@@ -47,7 +47,11 @@ def epoch_progress(batch: dict) -> tuple[int, str]:
         return batch["epoch"], "unknown"
     if not isinstance(source_batches_consumed, int):
         return batch["epoch"], "unknown"
-    progress = 100.0 * min(source_batches_consumed, source_steps_per_epoch) / source_steps_per_epoch
+    progress = (
+        100.0
+        * min(source_batches_consumed, source_steps_per_epoch)
+        / source_steps_per_epoch
+    )
     return batch["epoch"], f"{progress:.1f}%"
 
 
@@ -85,8 +89,16 @@ class TrainAccumulator:
         self.timestep_count += result.timesteps.numel()
         batch_timestep_min = int(result.timesteps.min().item())
         batch_timestep_max = int(result.timesteps.max().item())
-        self.timestep_min = batch_timestep_min if self.timestep_min is None else min(self.timestep_min, batch_timestep_min)
-        self.timestep_max = batch_timestep_max if self.timestep_max is None else max(self.timestep_max, batch_timestep_max)
+        self.timestep_min = (
+            batch_timestep_min
+            if self.timestep_min is None
+            else min(self.timestep_min, batch_timestep_min)
+        )
+        self.timestep_max = (
+            batch_timestep_max
+            if self.timestep_max is None
+            else max(self.timestep_max, batch_timestep_max)
+        )
         self.last_result = result
 
     def has_pending(self) -> bool:
@@ -95,16 +107,32 @@ class TrainAccumulator:
     def ready(self, grad_accum_steps: int) -> bool:
         return self.num_batches >= grad_accum_steps
 
-    def scale_partial_gradients(self, model: TextDiffusionModel, grad_accum_steps: int) -> None:
+    def scale_partial_gradients(
+        self, model: TextDiffusionModel, grad_accum_steps: int
+    ) -> None:
         if self.num_batches > 0:
             scale_gradients(model, grad_accum_steps / self.num_batches)
 
-    def build_report(self, *, step: int, lr: float, config: RunConfig, tokenizer, device: torch.device) -> OptimizerStepReport:
+    def build_report(
+        self,
+        *,
+        step: int,
+        lr: float,
+        config: RunConfig,
+        tokenizer,
+        device: torch.device,
+    ) -> OptimizerStepReport:
         if self.last_result is None or self.num_batches <= 0:
-            raise RuntimeError("cannot build optimizer step report without accumulated batches")
+            raise RuntimeError(
+                "cannot build optimizer step report without accumulated batches"
+            )
         last = self.last_result
         epoch, epoch_progress_text = epoch_progress(last.batch)
-        epoch_progress_pct = None if epoch_progress_text == "unknown" else float(epoch_progress_text[:-1])
+        epoch_progress_pct = (
+            None
+            if epoch_progress_text == "unknown"
+            else float(epoch_progress_text[:-1])
+        )
         metrics = {
             "step": step,
             "epoch": epoch,

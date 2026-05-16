@@ -29,7 +29,9 @@ class TextDiffusionConfig:
     @classmethod
     def from_dict(cls, payload: dict) -> "TextDiffusionConfig":
         field_names = {field.name for field in fields(cls)}
-        return cls(**{key: value for key, value in payload.items() if key in field_names})
+        return cls(
+            **{key: value for key, value in payload.items() if key in field_names}
+        )
 
 
 class TextDiffusionSelfAttention(nn.Module):
@@ -55,7 +57,9 @@ class TextDiffusionSelfAttention(nn.Module):
 
     def _reshape_heads(self, tensor: torch.Tensor) -> torch.Tensor:
         batch_size, sequence_length, _ = tensor.shape
-        return tensor.view(batch_size, sequence_length, self.num_heads, self.head_dim).transpose(1, 2)
+        return tensor.view(
+            batch_size, sequence_length, self.num_heads, self.head_dim
+        ).transpose(1, 2)
 
     def _apply_rotary_embedding(
         self,
@@ -70,7 +74,9 @@ class TextDiffusionSelfAttention(nn.Module):
         return torch.cat([rotated_first, rotated_second], dim=-1)
 
     @contextmanager
-    def _sdp_kernel_context(self, query: torch.Tensor, *, has_attention_mask: bool = False):
+    def _sdp_kernel_context(
+        self, query: torch.Tensor, *, has_attention_mask: bool = False
+    ):
         if not query.is_cuda:
             with nullcontext():
                 yield
@@ -105,7 +111,9 @@ class TextDiffusionSelfAttention(nn.Module):
         key = self._apply_rotary_embedding(key, cos, sin)
 
         if sequence_lengths is not None:
-            attention_output = self._flash_varlen_attention(query, key, value, sequence_lengths)
+            attention_output = self._flash_varlen_attention(
+                query, key, value, sequence_lengths
+            )
         else:
             attention_mask = None
             if token_mask is not None:
@@ -113,7 +121,9 @@ class TextDiffusionSelfAttention(nn.Module):
                     dtype=torch.bool,
                     device=hidden_states.device,
                 )
-            with self._sdp_kernel_context(query, has_attention_mask=attention_mask is not None):
+            with self._sdp_kernel_context(
+                query, has_attention_mask=attention_mask is not None
+            ):
                 attention_output = F.scaled_dot_product_attention(
                     query,
                     key,
@@ -121,8 +131,10 @@ class TextDiffusionSelfAttention(nn.Module):
                     attn_mask=attention_mask,
                     dropout_p=self.dropout if self.training else 0.0,
                 )
-        attention_output = attention_output.transpose(1, 2).contiguous().view(
-            hidden_states.size(0), hidden_states.size(1), self.hidden_size
+        attention_output = (
+            attention_output.transpose(1, 2)
+            .contiguous()
+            .view(hidden_states.size(0), hidden_states.size(1), self.hidden_size)
         )
         return self.out_proj(attention_output)
 
@@ -142,13 +154,25 @@ class TextDiffusionSelfAttention(nn.Module):
             raise RuntimeError("flash-attn varlen attention requires CUDA tensors")
 
         batch_size, _, sequence_length, _ = query.shape
-        flat_query = query.transpose(1, 2).contiguous().view(-1, self.num_heads, self.head_dim)
-        flat_key = key.transpose(1, 2).contiguous().view(-1, self.num_heads, self.head_dim)
-        flat_value = value.transpose(1, 2).contiguous().view(-1, self.num_heads, self.head_dim)
-        lengths = [int(length) for row_lengths in sequence_lengths for length in row_lengths]
-        cu_seqlens = torch.empty(len(lengths) + 1, dtype=torch.int32, device=query.device)
+        flat_query = (
+            query.transpose(1, 2).contiguous().view(-1, self.num_heads, self.head_dim)
+        )
+        flat_key = (
+            key.transpose(1, 2).contiguous().view(-1, self.num_heads, self.head_dim)
+        )
+        flat_value = (
+            value.transpose(1, 2).contiguous().view(-1, self.num_heads, self.head_dim)
+        )
+        lengths = [
+            int(length) for row_lengths in sequence_lengths for length in row_lengths
+        ]
+        cu_seqlens = torch.empty(
+            len(lengths) + 1, dtype=torch.int32, device=query.device
+        )
         cu_seqlens[0] = 0
-        cu_seqlens[1:] = torch.tensor(lengths, dtype=torch.int32, device=query.device).cumsum(dim=0)
+        cu_seqlens[1:] = torch.tensor(
+            lengths, dtype=torch.int32, device=query.device
+        ).cumsum(dim=0)
         max_seqlen = max(lengths)
         flat_output = flash_attn_varlen_func(
             flat_query,
@@ -161,7 +185,9 @@ class TextDiffusionSelfAttention(nn.Module):
             dropout_p=self.dropout if self.training else 0.0,
             causal=False,
         )
-        return flat_output.view(batch_size, sequence_length, self.num_heads, self.head_dim).transpose(1, 2)
+        return flat_output.view(
+            batch_size, sequence_length, self.num_heads, self.head_dim
+        ).transpose(1, 2)
 
 
 class TextDiffusionEncoderLayer(nn.Module):
@@ -184,7 +210,12 @@ class TextDiffusionEncoderLayer(nn.Module):
     ) -> torch.Tensor:
         attn_input = self.norm1(hidden_states)
         hidden_states = hidden_states + self.dropout1(
-            self.self_attn(attn_input, cos_sin, token_mask=token_mask, sequence_lengths=sequence_lengths)
+            self.self_attn(
+                attn_input,
+                cos_sin,
+                token_mask=token_mask,
+                sequence_lengths=sequence_lengths,
+            )
         )
 
         mlp_input = self.norm2(hidden_states)
@@ -196,10 +227,15 @@ class TextDiffusionEncoderLayer(nn.Module):
 
 
 class TextDiffusionEncoder(nn.Module):
-    def __init__(self, hidden_size: int, num_heads: int, num_layers: int, dropout: float) -> None:
+    def __init__(
+        self, hidden_size: int, num_heads: int, num_layers: int, dropout: float
+    ) -> None:
         super().__init__()
         self.layers = nn.ModuleList(
-            [TextDiffusionEncoderLayer(hidden_size, num_heads, dropout) for _ in range(num_layers)]
+            [
+                TextDiffusionEncoderLayer(hidden_size, num_heads, dropout)
+                for _ in range(num_layers)
+            ]
         )
 
     def forward(
@@ -210,7 +246,12 @@ class TextDiffusionEncoder(nn.Module):
         sequence_lengths: Sequence[Sequence[int]] | None = None,
     ) -> torch.Tensor:
         for layer in self.layers:
-            hidden_states = layer(hidden_states, cos_sin, token_mask=token_mask, sequence_lengths=sequence_lengths)
+            hidden_states = layer(
+                hidden_states,
+                cos_sin,
+                token_mask=token_mask,
+                sequence_lengths=sequence_lengths,
+            )
         return hidden_states
 
 
@@ -222,7 +263,11 @@ class TextDiffusionModel(nn.Module):
     original token IDs from the masked sequence.
     """
 
-    def __init__(self, config: TextDiffusionConfig, tokenizer: CharTokenizer | HuggingFaceTokenizer):
+    def __init__(
+        self,
+        config: TextDiffusionConfig,
+        tokenizer: CharTokenizer | HuggingFaceTokenizer,
+    ):
         super().__init__()
         self.config = config
         self.tokenizer = tokenizer
@@ -284,7 +329,9 @@ class TextDiffusionModel(nn.Module):
                 f"token_mask shape {tuple(token_mask.shape)} does not match input_ids shape {tuple(input_ids.shape)}"
             )
         if sequence_lengths is not None:
-            self._validate_sequence_lengths(sequence_lengths, batch_size, sequence_length)
+            self._validate_sequence_lengths(
+                sequence_lengths, batch_size, sequence_length
+            )
 
         if timesteps.shape != (batch_size,):
             raise ValueError(
@@ -323,11 +370,14 @@ class TextDiffusionModel(nn.Module):
     ) -> tuple[torch.Tensor, torch.Tensor]:
         mask_probability = self.corruption_probability(timesteps).unsqueeze(1)
 
-        mask_choice = torch.rand(
-            input_ids.shape,
-            device=input_ids.device,
-            generator=generator,
-        ) < mask_probability
+        mask_choice = (
+            torch.rand(
+                input_ids.shape,
+                device=input_ids.device,
+                generator=generator,
+            )
+            < mask_probability
+        )
         if token_mask is not None:
             mask_choice = mask_choice & token_mask
         mask_tokens = torch.full_like(input_ids, self.mask_token_id)
@@ -348,7 +398,12 @@ class TextDiffusionModel(nn.Module):
             token_mask=token_mask,
             generator=generator,
         )
-        logits = self(masked_tokens, timesteps, token_mask=token_mask, sequence_lengths=sequence_lengths)
+        logits = self(
+            masked_tokens,
+            timesteps,
+            token_mask=token_mask,
+            sequence_lengths=sequence_lengths,
+        )
         flat_logits = logits.reshape(-1, self.vocab_size)
         flat_targets = clean_input_ids.reshape(-1)
         flat_mask_mask = mask_choice.reshape(-1)
@@ -367,8 +422,12 @@ class TextDiffusionModel(nn.Module):
             torch.ones_like(per_token_loss),
             torch.full_like(per_token_loss, self.config.clean_token_loss_weight),
         )
-        token_weights = torch.where(flat_token_mask, token_weights, torch.zeros_like(token_weights))
-        loss = (per_token_loss * token_weights).sum() / token_weights.sum().clamp_min(1e-8)
+        token_weights = torch.where(
+            flat_token_mask, token_weights, torch.zeros_like(token_weights)
+        )
+        loss = (per_token_loss * token_weights).sum() / token_weights.sum().clamp_min(
+            1e-8
+        )
         stats = {
             "masked_input_ids": masked_tokens,
             "masked_tokens": masked_tokens,
@@ -388,7 +447,9 @@ class TextDiffusionModel(nn.Module):
         sequence_length: int,
     ) -> None:
         if len(sequence_lengths) != batch_size:
-            raise ValueError(f"sequence_lengths must have {batch_size} rows, got {len(sequence_lengths)}")
+            raise ValueError(
+                f"sequence_lengths must have {batch_size} rows, got {len(sequence_lengths)}"
+            )
         for batch_index, row_lengths in enumerate(sequence_lengths):
             for length in row_lengths:
                 if int(length) <= 0:

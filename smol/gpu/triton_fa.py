@@ -5,8 +5,7 @@ import triton.language as tl
 
 
 @triton.jit
-def flash_attention_kernel():
-    ...
+def flash_attention_kernel(): ...
 
 
 class KernelSDPA(torch.autograd.Function):
@@ -22,5 +21,16 @@ class KernelSDPA(torch.autograd.Function):
         scale = 1.0 / math.sqrt(d)
         seq_len_k = k.size(-2)
         grid = lambda meta: (b * h, l)
-        flash_attention_kernel[grid](q, k, v, o_BHLD, z_BHL, scale, l, seq_len_k, d, BLOCK_SIZE=triton.next_power_of_2(d))
+        flash_attention_kernel[grid](
+            q,
+            k,
+            v,
+            o_BHLD,
+            z_BHL,
+            scale,
+            l,
+            seq_len_k,
+            d,
+            BLOCK_SIZE=triton.next_power_of_2(d),
+        )
         return o_BHLD

@@ -3,6 +3,7 @@ python -m smol.diffusion.text.sample \
 --checkpoint-path runs/scale-300m-fineweb-1bt-less-no-drop-gpt2/20260507-073216/checkpoints/final.pt  \
 --input-text "i want to go to the <mask><mask><mask><mask> already! It is already <mask><mask><mask>! Lets go"
 """
+
 import argparse
 from collections.abc import Sequence
 
@@ -14,8 +15,12 @@ from smol.diffusion.text.core.tokenizer import init_tokenizer
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Sample from a text diffusion checkpoint with iterative mask decoding.")
-    parser.add_argument("--checkpoint-path", default="checkpoints/text_diffusion_model.pt")
+    parser = argparse.ArgumentParser(
+        description="Sample from a text diffusion checkpoint with iterative mask decoding."
+    )
+    parser.add_argument(
+        "--checkpoint-path", default="checkpoints/text_diffusion_model.pt"
+    )
     parser.add_argument("--num-samples", type=int, default=2)
     parser.add_argument("--sequence-length", type=int, default=128)
     parser.add_argument(
@@ -24,8 +29,12 @@ def parse_args() -> argparse.Namespace:
         help="Optional prompt used to seed the initial token sequence before denoising.",
     )
     parser.add_argument("--seed", type=int, default=1337)
-    parser.add_argument("--device", default=None, help="Override device, e.g. cpu or cuda")
-    parser.add_argument("--append-eos", action="store_true", help="Append EOS token to the input text")
+    parser.add_argument(
+        "--device", default=None, help="Override device, e.g. cpu or cuda"
+    )
+    parser.add_argument(
+        "--append-eos", action="store_true", help="Append EOS token to the input text"
+    )
     parser.add_argument("--temperature", type=float, default=0.8)
     parser.add_argument("--confidence-threshold", type=float, default=0.9)
     parser.add_argument("--top-k", type=int, default=8)
@@ -37,7 +46,9 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def load_checkpoint(checkpoint_path: str, device: torch.device) -> tuple[TextDiffusionModel, dict]:
+def load_checkpoint(
+    checkpoint_path: str, device: torch.device
+) -> tuple[TextDiffusionModel, dict]:
     checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
     run_config = checkpoint.get("run_config", {})
     tokenizer_name = run_config.get("data", {}).get("tokenizer_name", "char")
@@ -120,7 +131,9 @@ def sample(
     if token_ids.size(0) == 0:
         return token_ids
     if editable_mask.shape != token_ids.shape:
-        raise ValueError(f"editable_mask shape {tuple(editable_mask.shape)} does not match token_ids {tuple(token_ids.shape)}")
+        raise ValueError(
+            f"editable_mask shape {tuple(editable_mask.shape)} does not match token_ids {tuple(token_ids.shape)}"
+        )
     if temperature <= 0.0:
         raise ValueError(f"temperature must be positive, got {temperature}")
 
@@ -134,12 +147,18 @@ def sample(
         active_sample_mask = unresolved_mask.any(dim=1)
         active_token_ids = token_ids[active_sample_mask]
         active_unresolved = unresolved_mask[active_sample_mask]
-        active_token_mask = None if token_mask is None else token_mask[active_sample_mask]
-        active_sequence_lengths = select_sequence_lengths(sequence_lengths, active_sample_mask)
+        active_token_mask = (
+            None if token_mask is None else token_mask[active_sample_mask]
+        )
+        active_sequence_lengths = select_sequence_lengths(
+            sequence_lengths, active_sample_mask
+        )
         active_initial = initial_unresolved[active_sample_mask]
         active_start_t = start_t[active_sample_mask]
         remaining = active_unresolved.sum(dim=1)
-        timesteps = _timesteps_from_remaining(active_start_t, remaining, active_initial, model.config.num_diffusion_steps)
+        timesteps = _timesteps_from_remaining(
+            active_start_t, remaining, active_initial, model.config.num_diffusion_steps
+        )
 
         logits = model(
             active_token_ids,
@@ -188,12 +207,21 @@ def _resolve_start_timesteps(
 ) -> torch.Tensor:
     num_samples = token_ids.size(0)
     if start_timesteps is None:
-        return torch.full((num_samples,), model.config.num_diffusion_steps, device=device, dtype=torch.long)
+        return torch.full(
+            (num_samples,),
+            model.config.num_diffusion_steps,
+            device=device,
+            dtype=torch.long,
+        )
     if isinstance(start_timesteps, int):
-        return torch.full((num_samples,), start_timesteps, device=device, dtype=torch.long).clamp_min(1)
+        return torch.full(
+            (num_samples,), start_timesteps, device=device, dtype=torch.long
+        ).clamp_min(1)
     resolved = start_timesteps.to(device=device, dtype=torch.long).clamp_min(1)
     if resolved.shape != (num_samples,):
-        raise ValueError(f"start_timesteps must have shape ({num_samples},), got {tuple(resolved.shape)}")
+        raise ValueError(
+            f"start_timesteps must have shape ({num_samples},), got {tuple(resolved.shape)}"
+        )
     return resolved
 
 
@@ -226,15 +254,23 @@ def _apply_repeat_penalty(
             finalized = finalized[-repeat_window:]
         if finalized.numel() == 0:
             continue
-        counts = torch.bincount(finalized, minlength=vocab_size).to(dtype=adjusted.dtype, device=adjusted.device)
-        adjusted[sample_index] = adjusted[sample_index] - repeat_penalty * counts.view(1, -1)
+        counts = torch.bincount(finalized, minlength=vocab_size).to(
+            dtype=adjusted.dtype, device=adjusted.device
+        )
+        adjusted[sample_index] = adjusted[sample_index] - repeat_penalty * counts.view(
+            1, -1
+        )
     return adjusted
 
 
-def _sample_top_k(top_k_probs: torch.Tensor, top_k_indices: torch.Tensor) -> torch.Tensor:
+def _sample_top_k(
+    top_k_probs: torch.Tensor, top_k_indices: torch.Tensor
+) -> torch.Tensor:
     batch_size, sequence_length, k = top_k_probs.shape
     normalized = top_k_probs / top_k_probs.sum(dim=-1, keepdim=True).clamp_min(1e-12)
-    sampled_k = torch.multinomial(normalized.reshape(-1, k), 1).view(batch_size, sequence_length)
+    sampled_k = torch.multinomial(normalized.reshape(-1, k), 1).view(
+        batch_size, sequence_length
+    )
     return torch.gather(top_k_indices, -1, sampled_k.unsqueeze(-1)).squeeze(-1)
 
 
@@ -255,14 +291,18 @@ def _select_decode_mask(
         remaining = int(sample_unresolved.sum().item())
         if remaining == 0:
             continue
-        progress = 1.0 - (remaining / max(int(initial_unresolved[sample_index].item()), 1))
+        progress = 1.0 - (
+            remaining / max(int(initial_unresolved[sample_index].item()), 1)
+        )
         cap_ratio = cap_start_ratio + (cap_end_ratio - cap_start_ratio) * progress
         cap_ratio = min(max(cap_ratio, min_cap), 1.0)
         decode_budget = max(1, int(round(remaining * cap_ratio)))
         if max_decode_per_step > 0:
             decode_budget = min(decode_budget, max_decode_per_step)
 
-        candidate_mask = (confidences[sample_index] >= confidence_threshold) & sample_unresolved
+        candidate_mask = (
+            confidences[sample_index] >= confidence_threshold
+        ) & sample_unresolved
         decode_count = int(candidate_mask.sum().item())
         if decode_count == 0:
             masked_confidences = torch.where(
@@ -290,7 +330,9 @@ def select_sequence_lengths(
 ) -> list[list[int]] | None:
     if sequence_lengths is None:
         return None
-    active_indices = torch.nonzero(active_sample_mask, as_tuple=False).flatten().cpu().tolist()
+    active_indices = (
+        torch.nonzero(active_sample_mask, as_tuple=False).flatten().cpu().tolist()
+    )
     return [list(sequence_lengths[index]) for index in active_indices]
 
 
@@ -333,7 +375,9 @@ def main() -> None:
     initial_decoded = decode_samples(tokenizer_name, initial_token_ids.cpu())
     decoded = decode_samples(tokenizer_name, samples.cpu())
 
-    for idx, (initial_text, text) in enumerate(zip(initial_decoded, decoded, strict=True), start=1):
+    for idx, (initial_text, text) in enumerate(
+        zip(initial_decoded, decoded, strict=True), start=1
+    ):
         print(f"[sample {idx}]")
         print(f"input: {initial_text}")
         print(text)

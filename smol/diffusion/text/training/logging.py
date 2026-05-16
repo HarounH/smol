@@ -4,7 +4,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-
 _LOGGER_NAME = "smol.diffusion.text"
 _CONFIGURED_HANDLER: logging.Handler | None = None
 _BASE_CONTEXT: dict[str, Any] = {}
@@ -34,7 +33,9 @@ class _JsonFormatter(logging.Formatter):
 
 
 class StructuredLogger:
-    def __init__(self, logger: logging.Logger, context: dict[str, Any] | None = None) -> None:
+    def __init__(
+        self, logger: logging.Logger, context: dict[str, Any] | None = None
+    ) -> None:
         self._logger = logger
         self._context = context or {}
 
@@ -54,13 +55,19 @@ class StructuredLogger:
         self._log(logging.ERROR, message, **event_data)
 
     def exception(self, message: str, **event_data: Any) -> None:
-        self._logger.exception(message, extra={"context": self._context, "event_data": event_data})
+        self._logger.exception(
+            message, extra={"context": self._context, "event_data": event_data}
+        )
 
     def _log(self, level: int, message: str, **event_data: Any) -> None:
-        self._logger.log(level, message, extra={"context": self._context, "event_data": event_data})
+        self._logger.log(
+            level, message, extra={"context": self._context, "event_data": event_data}
+        )
 
 
-def init_logging(log_path: Path, *, level: int = logging.INFO, **base_context: Any) -> StructuredLogger:
+def init_logging(
+    log_path: Path, *, level: int = logging.INFO, **base_context: Any
+) -> StructuredLogger:
     global _CONFIGURED_HANDLER, _BASE_CONTEXT
 
     log_path.parent.mkdir(parents=True, exist_ok=True)
@@ -84,7 +91,9 @@ def init_logging(log_path: Path, *, level: int = logging.INFO, **base_context: A
 
 def get_logger(name: str | None = None, **context: Any) -> StructuredLogger:
     logger_name = _LOGGER_NAME if name is None else f"{_LOGGER_NAME}.{name}"
-    return StructuredLogger(logging.getLogger(logger_name), {**_BASE_CONTEXT, **context})
+    return StructuredLogger(
+        logging.getLogger(logger_name), {**_BASE_CONTEXT, **context}
+    )
 
 
 def shutdown_logging() -> None:

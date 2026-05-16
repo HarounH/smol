@@ -10,11 +10,19 @@ from tqdm.auto import tqdm
 
 from smol.diffusion.text.core.config import RunConfig
 from smol.diffusion.text.data import ResumableTextDataLoader
-from smol.diffusion.text.training.logging import get_logger, init_logging, shutdown_logging
+from smol.diffusion.text.training.logging import (
+    get_logger,
+    init_logging,
+    shutdown_logging,
+)
 from smol.diffusion.text.core.model import TextDiffusionConfig, TextDiffusionModel
 from smol.diffusion.text.training.internals import ModelInternalsLogger
 from smol.diffusion.text.core.optimizer import AdamW
-from smol.diffusion.text.training.runtime import create_profiler, progress_write, resolve_autocast_context
+from smol.diffusion.text.training.runtime import (
+    create_profiler,
+    progress_write,
+    resolve_autocast_context,
+)
 from smol.diffusion.text.training.schedules import learning_rate
 from smol.diffusion.text.training.reporter import TrainReporter, init_wandb
 from smol.diffusion.text.training.run import (
@@ -27,12 +35,13 @@ from smol.diffusion.text.training.run import (
 )
 from smol.diffusion.text.training.state import MicroBatchResult, TrainAccumulator
 
-
 DEFAULT_CONFIG_FN = "smol.diffusion.text.experiments.scale_300m_103:make_config"
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Train the text diffusion model from a config factory.")
+    parser = argparse.ArgumentParser(
+        description="Train the text diffusion model from a config factory."
+    )
     parser.add_argument(
         "config_fn",
         nargs="?",
@@ -45,12 +54,16 @@ def parse_args() -> argparse.Namespace:
 def load_run_config(function_path: str) -> RunConfig:
     module_name, separator, function_name = function_path.partition(":")
     if not separator or not module_name or not function_name:
-        raise ValueError("config function path must use the form 'package.module:function_name'")
+        raise ValueError(
+            "config function path must use the form 'package.module:function_name'"
+        )
     module = importlib.import_module(module_name)
     factory = getattr(module, function_name)
     config = factory()
     if not isinstance(config, RunConfig):
-        raise TypeError(f"{function_path} returned {type(config).__name__}, expected RunConfig")
+        raise TypeError(
+            f"{function_path} returned {type(config).__name__}, expected RunConfig"
+        )
     return config
 
 
@@ -105,7 +118,9 @@ def _run_micro_batch(
     )
 
 
-def _optimizer_step(*, optimizer: AdamW, profiler, config: RunConfig, step: int) -> float:
+def _optimizer_step(
+    *, optimizer: AdamW, profiler, config: RunConfig, step: int
+) -> float:
     current_lr = learning_rate(config, step)
     optimizer.lr = current_lr
     optimizer.step()
@@ -118,10 +133,16 @@ def main(run_config: RunConfig | None = None) -> None:
     print("loading run config...", flush=True)
     config = run_config or load_run_config(parse_args().config_fn)
     if config.grad_accum_steps <= 0:
-        raise ValueError(f"grad_accum_steps must be positive, got {config.grad_accum_steps}")
+        raise ValueError(
+            f"grad_accum_steps must be positive, got {config.grad_accum_steps}"
+        )
     torch.manual_seed(config.seed)
 
-    device = torch.device(config.device) if config.device is not None else torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = (
+        torch.device(config.device)
+        if config.device is not None
+        else torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    )
     config.data.base_seed = config.seed
     print(f"preparing run dirs for {config.experiment_name}...", flush=True)
     run_dirs = prepare_run_dirs(config)
@@ -140,17 +161,28 @@ def main(run_config: RunConfig | None = None) -> None:
         model = TextDiffusionModel(model_config, dataloader.tokenizer).to(device)
         print("initializing optimizer/loggers...", flush=True)
         internals_logger = ModelInternalsLogger(model)
-        optimizer = AdamW(model.parameters(), lr=config.lr, weight_decay=config.weight_decay)
+        optimizer = AdamW(
+            model.parameters(), lr=config.lr, weight_decay=config.weight_decay
+        )
         wandb_run = init_wandb(config, model_config, device, run_dirs["run_root"])
         print("checking for checkpoints...", flush=True)
         latest_checkpoint = find_latest_checkpoint(run_dirs["checkpoints"])
         resumed_from: str | None = None
         start_step = 0
         if latest_checkpoint is not None:
-            start_step = load_checkpoint(latest_checkpoint, model, optimizer, dataloader, device)
+            start_step = load_checkpoint(
+                latest_checkpoint, model, optimizer, dataloader, device
+            )
             resumed_from = str(latest_checkpoint)
-            logger.info("checkpoint_resumed", checkpoint_path=str(latest_checkpoint), step=start_step)
-            print(f"resumed from checkpoint {latest_checkpoint} at step={start_step}", flush=True)
+            logger.info(
+                "checkpoint_resumed",
+                checkpoint_path=str(latest_checkpoint),
+                step=start_step,
+            )
+            print(
+                f"resumed from checkpoint {latest_checkpoint} at step={start_step}",
+                flush=True,
+            )
 
         write_json(run_dirs["logs"] / "run_config.json", asdict(config))
         resolved_global_batch_size = global_batch_size(config)
@@ -202,7 +234,9 @@ def main(run_config: RunConfig | None = None) -> None:
         model.train()
         tokenizer = dataloader.tokenizer
         data_wait_start = time.perf_counter()
-        progress_total = None if config.max_steps <= 0 else max(config.max_steps - start_step, 0)
+        progress_total = (
+            None if config.max_steps <= 0 else max(config.max_steps - start_step, 0)
+        )
         exit_reason = "epochs_exhausted"
         exit_details: dict[str, int | str | None] = {
             "configured_epochs": config.epochs,
@@ -234,7 +268,10 @@ def main(run_config: RunConfig | None = None) -> None:
 
                 warned_flex_compile = False
                 for batch in dataloader.iter_epochs(config.epochs):
-                    if not warned_flex_compile and batch.get("sequence_lengths") is not None:
+                    if (
+                        not warned_flex_compile
+                        and batch.get("sequence_lengths") is not None
+                    ):
                         progress_write(
                             "dense packing enabled: using flash-attn varlen attention for document segments",
                             progress_bar,
@@ -256,12 +293,27 @@ def main(run_config: RunConfig | None = None) -> None:
                         data_wait_start = time.perf_counter()
                         continue
 
-                    current_lr = _optimizer_step(optimizer=optimizer, profiler=profiler, config=config, step=step)
+                    current_lr = _optimizer_step(
+                        optimizer=optimizer, profiler=profiler, config=config, step=step
+                    )
                     step += 1
-                    report = accumulator.build_report(step=step, lr=current_lr, config=config, tokenizer=tokenizer, device=device)
+                    report = accumulator.build_report(
+                        step=step,
+                        lr=current_lr,
+                        config=config,
+                        tokenizer=tokenizer,
+                        device=device,
+                    )
                     reporter.on_step(report)
-                    reporter.maybe_preview(step=step, model=model, preview_state=report.preview_state)
-                    reporter.maybe_checkpoint(step=step, model=model, optimizer=optimizer, dataloader=dataloader)
+                    reporter.maybe_preview(
+                        step=step, model=model, preview_state=report.preview_state
+                    )
+                    reporter.maybe_checkpoint(
+                        step=step,
+                        model=model,
+                        optimizer=optimizer,
+                        dataloader=dataloader,
+                    )
 
                     if config.max_steps > 0 and step >= config.max_steps:
                         exit_reason = "max_steps_reached"
@@ -269,8 +321,12 @@ def main(run_config: RunConfig | None = None) -> None:
                             {
                                 "configured_max_steps": config.max_steps,
                                 "final_epoch": report.preview_state.batch["epoch"],
-                                "final_source_batches_consumed_in_epoch": report.preview_state.batch["source_batches_consumed_in_epoch"],
-                                "final_dataloader_global_step": report.preview_state.batch["global_step"],
+                                "final_source_batches_consumed_in_epoch": report.preview_state.batch[
+                                    "source_batches_consumed_in_epoch"
+                                ],
+                                "final_dataloader_global_step": report.preview_state.batch[
+                                    "global_step"
+                                ],
                             }
                         )
                         break
@@ -278,11 +334,21 @@ def main(run_config: RunConfig | None = None) -> None:
                     accumulator.reset()
                     data_wait_start = time.perf_counter()
 
-                if accumulator.has_pending() and (config.max_steps <= 0 or step < config.max_steps):
+                if accumulator.has_pending() and (
+                    config.max_steps <= 0 or step < config.max_steps
+                ):
                     accumulator.scale_partial_gradients(model, config.grad_accum_steps)
-                    current_lr = _optimizer_step(optimizer=optimizer, profiler=profiler, config=config, step=step)
+                    current_lr = _optimizer_step(
+                        optimizer=optimizer, profiler=profiler, config=config, step=step
+                    )
                     step += 1
-                    report = accumulator.build_report(step=step, lr=current_lr, config=config, tokenizer=tokenizer, device=device)
+                    report = accumulator.build_report(
+                        step=step,
+                        lr=current_lr,
+                        config=config,
+                        tokenizer=tokenizer,
+                        device=device,
+                    )
                     reporter.on_step(report, advance_progress=False)
                     reporter.on_partial_step(report)
 
@@ -300,7 +366,9 @@ def main(run_config: RunConfig | None = None) -> None:
                 exit_reason = "epochs_exhausted"
 
         final_checkpoint_path = run_dirs["checkpoints"] / "final.pt"
-        save_checkpoint(final_checkpoint_path, config, model, optimizer, dataloader, step)
+        save_checkpoint(
+            final_checkpoint_path, config, model, optimizer, dataloader, step
+        )
         progress_write(f"saved checkpoint to {final_checkpoint_path}")
         progress_write(f"training finished: reason={exit_reason} step={step}")
         logger.info(
@@ -311,7 +379,11 @@ def main(run_config: RunConfig | None = None) -> None:
             **exit_details,
         )
         if "reporter" in locals():
-            reporter.finish(final_checkpoint_path=final_checkpoint_path, step=step, exit_reason=exit_reason)
+            reporter.finish(
+                final_checkpoint_path=final_checkpoint_path,
+                step=step,
+                exit_reason=exit_reason,
+            )
     except Exception:
         logger.exception("training_failed")
         raise

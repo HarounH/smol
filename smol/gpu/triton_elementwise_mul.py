@@ -9,7 +9,10 @@ import triton.language as tl
 
 @triton.jit
 def elementwise_mul_kernel(
-    a_ptr, b_ptr, out_ptr, n_elements,
+    a_ptr,
+    b_ptr,
+    out_ptr,
+    n_elements,
     BLOCK_SIZE: tl.constexpr,
 ):
     pid = tl.program_id(0)
@@ -22,26 +25,45 @@ def elementwise_mul_kernel(
     tl.store(out_ptr + offsets, c, mask=mask)
 
 
-def run_triton_mul(a: torch.Tensor, b: torch.Tensor, out: torch.Tensor, block_size: int = 1024):
+def run_triton_mul(
+    a: torch.Tensor, b: torch.Tensor, out: torch.Tensor, block_size: int = 1024
+):
     n_elements = out.numel()
     grid = (triton.cdiv(n_elements, block_size),)
     elementwise_mul_kernel[grid](
-        a, b, out, n_elements,
+        a,
+        b,
+        out,
+        n_elements,
         BLOCK_SIZE=block_size,
         num_warps=4,
     )
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Elementwise multiply using Triton kernel")
-    parser.add_argument("--size", type=int, default=1_000_000, help="Number of elements in the vectors")
-    parser.add_argument("--dtype", type=str, default="float32", choices=["float16", "bfloat16", "float32"], help="Tensor dtype")
+    parser = argparse.ArgumentParser(
+        description="Elementwise multiply using Triton kernel"
+    )
+    parser.add_argument(
+        "--size", type=int, default=1_000_000, help="Number of elements in the vectors"
+    )
+    parser.add_argument(
+        "--dtype",
+        type=str,
+        default="float32",
+        choices=["float16", "bfloat16", "float32"],
+        help="Tensor dtype",
+    )
     parser.add_argument("--iters", type=int, default=100, help="Benchmark iterations")
     parser.add_argument("--warmup", type=int, default=20, help="Warmup iterations")
     parser.add_argument("--block", type=int, default=1024, help="Kernel BLOCK_SIZE")
     parser.add_argument("--seed", type=int, default=0, help="Random seed")
-    parser.add_argument("--device", type=str, default="cuda", help="Device to use (cuda or cpu)")
-    parser.add_argument("--no-check", action="store_true", help="Skip correctness check vs torch")
+    parser.add_argument(
+        "--device", type=str, default="cuda", help="Device to use (cuda or cpu)"
+    )
+    parser.add_argument(
+        "--no-check", action="store_true", help="Skip correctness check vs torch"
+    )
     return parser.parse_args()
 
 
@@ -61,7 +83,9 @@ def main():
     if not torch.cuda.is_available() and args.device == "cuda":
         raise RuntimeError("CUDA device requested but not available")
 
-    generator = torch.Generator(device="cuda" if args.device == "cuda" else "cpu").manual_seed(args.seed)
+    generator = torch.Generator(
+        device="cuda" if args.device == "cuda" else "cpu"
+    ).manual_seed(args.seed)
     dtype = str_to_dtype(args.dtype)
 
     # NVTX range: data init
@@ -146,12 +170,14 @@ def main():
 
     # Throughput (GB/s) estimate: 3 reads/writes per element for multiply: a, b, out
     bytes_per_elem = torch.tensor([], dtype=dtype).element_size()
-    total_bytes = (bytes_per_elem * args.size * 3)
-    gb = total_bytes / (1024 ** 3)
+    total_bytes = bytes_per_elem * args.size * 3
+    gb = total_bytes / (1024**3)
     triton_gbs = gb / (triton_ms / 1e3)
     torch_gbs = gb / (torch_ms / 1e3)
 
-    print(f"size={args.size} dtype={args.dtype} block={args.block} device={args.device}")
+    print(
+        f"size={args.size} dtype={args.dtype} block={args.block} device={args.device}"
+    )
     print(f"Triton: {triton_ms:.4f} ms/iter, ~{triton_gbs:.2f} GB/s")
     print(f"PyTorch: {torch_ms:.4f} ms/iter, ~{torch_gbs:.2f} GB/s")
 
@@ -161,4 +187,3 @@ if __name__ == "__main__":
     os.environ.setdefault("TRITON_DISABLE_LINE_INFO", "0")
     os.environ.setdefault("TRITON_KERNEL_DUMP", "0")
     main()
-

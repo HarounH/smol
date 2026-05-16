@@ -22,6 +22,7 @@ except Exception:  # pragma: no cover - optional dependency
 
 setup_done: bool = False
 
+
 def setup_logger() -> None:
     global setup_done
     if setup_done:
@@ -32,6 +33,7 @@ def setup_logger() -> None:
         format="%(asctime)s [%(levelname)s] %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
+
 
 setup_logger()
 logger = logging.getLogger(__name__)
@@ -87,7 +89,9 @@ class BaseCanvas:
         self.draw_time_ms = draw_time_ms
         self.automated_draw_time_estimation = automated_draw_time_estimation
         if self.automated_draw_time_estimation:
-            raise NotImplementedError("Automated draw time estimation is not implemented yet.")
+            raise NotImplementedError(
+                "Automated draw time estimation is not implemented yet."
+            )
         self.camera = Camera()
         self.verbose = verbose
         self.time_s = 0.0
@@ -99,7 +103,9 @@ class BaseCanvas:
 
         self.root = tk.Tk()
         self.root.title(title)
-        self.canvas = tk.Canvas(self.root, width=self.width, height=self.height, highlightthickness=0)
+        self.canvas = tk.Canvas(
+            self.root, width=self.width, height=self.height, highlightthickness=0
+        )
         self.canvas.pack()
 
         self._bind_keys()
@@ -108,7 +114,14 @@ class BaseCanvas:
 
     def draw(self) -> None:
         self.canvas.delete("all")
-        self.canvas.create_rectangle(0, 0, self.width, self.height, fill=self._color_to_hex(self.background), outline="")
+        self.canvas.create_rectangle(
+            0,
+            0,
+            self.width,
+            self.height,
+            fill=self._color_to_hex(self.background),
+            outline="",
+        )
         self._draw_origin_marker()
         self._draw_animation()
         self._draw_hud()
@@ -167,8 +180,12 @@ class BaseCanvas:
     def _draw_origin_marker(self) -> None:
         center_x, center_y = self._world_to_screen(0, 0)
         size = 10 * self.camera.zoom
-        self.canvas.create_line(center_x - size, center_y, center_x + size, center_y, fill="#888")
-        self.canvas.create_line(center_x, center_y - size, center_x, center_y + size, fill="#888")
+        self.canvas.create_line(
+            center_x - size, center_y, center_x + size, center_y, fill="#888"
+        )
+        self.canvas.create_line(
+            center_x, center_y - size, center_x, center_y + size, fill="#888"
+        )
 
     def _draw_animation(self) -> None:
         """Simple evolving marker to demonstrate animation."""
@@ -177,7 +194,9 @@ class BaseCanvas:
         wy = math.cos(self.time_s * 1.5) * orbit_radius
         sx, sy = self._world_to_screen(wx, wy)
         size = 10 * (1.0 + 0.2 * math.sin(self.time_s * 3.5)) * self.camera.zoom
-        self.canvas.create_oval(sx - size, sy - size, sx + size, sy + size, fill="#ff6666", outline="")
+        self.canvas.create_oval(
+            sx - size, sy - size, sx + size, sy + size, fill="#ff6666", outline=""
+        )
 
     def _draw_hud(self) -> None:
         hud_text = [
@@ -188,9 +207,18 @@ class BaseCanvas:
             f"Recording: {'ON' if self.recording else 'off'}",
         ]
         box_height = 8 + len(hud_text) * 12 + 8
-        self.canvas.create_rectangle(8, 8, 380, box_height, fill="#000000", stipple="gray50", outline="")
+        self.canvas.create_rectangle(
+            8, 8, 380, box_height, fill="#000000", stipple="gray50", outline=""
+        )
         for idx, line in enumerate(hud_text):
-            self.canvas.create_text(16, 16 + idx * 12, anchor="w", fill="#ffffff", font=("Helvetica", 9), text=line)
+            self.canvas.create_text(
+                16,
+                16 + idx * 12,
+                anchor="w",
+                fill="#ffffff",
+                font=("Helvetica", 9),
+                text=line,
+            )
         if self.recording:
             # Small red indicator in the HUD while recording
             self.canvas.create_oval(350, 16, 364, 30, fill="#ff3333", outline="")
@@ -215,7 +243,9 @@ class BaseCanvas:
         if saved_path:
             logger.info("Recording saved to %s", saved_path)
         else:
-            logger.warning("Recording stopped without output (no frames or write failed).")
+            logger.warning(
+                "Recording stopped without output (no frames or write failed)."
+            )
 
     def _capture_frame_if_recording(self) -> None:
         if not self.recording or self.recording_failed:
@@ -235,7 +265,9 @@ class BaseCanvas:
                 self.recorded_frames.append(np.array(frame))
             else:
                 self.recording_failed = True
-                logger.error("Failed to capture frame: no data returned from any backend.")
+                logger.error(
+                    "Failed to capture frame: no data returned from any backend."
+                )
         except Exception as exc:
             self.recording_failed = True
             logger.error("Failed to capture frame for recording: %s", exc)
@@ -246,11 +278,18 @@ class BaseCanvas:
         if mss is not None:
             try:
                 with mss.mss() as sct:
-                    monitor = {"left": x0, "top": y0, "width": x1 - x0, "height": y1 - y0}
+                    monitor = {
+                        "left": x0,
+                        "top": y0,
+                        "width": x1 - x0,
+                        "height": y1 - y0,
+                    }
                     shot = sct.grab(monitor)
                     return ImageGrab.Image.frombytes("RGB", shot.size, shot.rgb)
             except Exception as exc:
-                logger.warning("mss grab failed, falling back to PIL ImageGrab: %s", exc)
+                logger.warning(
+                    "mss grab failed, falling back to PIL ImageGrab: %s", exc
+                )
 
         # Fallback: PIL ImageGrab; ensure temp files go to our controlled dir
         with self._tempdir_override():
@@ -259,7 +298,9 @@ class BaseCanvas:
 
     def _resolve_temp_dir(self, temp_dir: Optional[str]) -> Path:
         """Choose where temp files (used by PIL on X11) are written."""
-        base = Path(temp_dir).expanduser() if temp_dir else Path.cwd() / ".recording_tmp"
+        base = (
+            Path(temp_dir).expanduser() if temp_dir else Path.cwd() / ".recording_tmp"
+        )
         base.mkdir(parents=True, exist_ok=True)
         return base.resolve()
 

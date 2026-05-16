@@ -5,13 +5,19 @@ def learning_rate(config: RunConfig, completed_steps: int) -> float:
     if config.lr_schedule == "constant":
         return config.lr
     if config.lr_schedule != "wsd":
-        raise ValueError(f"unsupported lr_schedule={config.lr_schedule!r}; expected 'constant' or 'wsd'")
+        raise ValueError(
+            f"unsupported lr_schedule={config.lr_schedule!r}; expected 'constant' or 'wsd'"
+        )
     if config.max_steps <= 0:
         raise ValueError("lr_schedule='wsd' requires max_steps > 0")
     if config.warmup_steps < 0:
-        raise ValueError(f"warmup_steps must be non-negative, got {config.warmup_steps}")
+        raise ValueError(
+            f"warmup_steps must be non-negative, got {config.warmup_steps}"
+        )
     if not 0.0 <= config.lr_stable_ratio <= 1.0:
-        raise ValueError(f"lr_stable_ratio must be in [0, 1], got {config.lr_stable_ratio}")
+        raise ValueError(
+            f"lr_stable_ratio must be in [0, 1], got {config.lr_stable_ratio}"
+        )
     if not 0.0 <= config.min_lr_ratio <= 1.0:
         raise ValueError(f"min_lr_ratio must be in [0, 1], got {config.min_lr_ratio}")
 

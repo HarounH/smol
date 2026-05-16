@@ -77,6 +77,7 @@ def sdpa_kernel(
         mask=mask,
     )
 
+
 class KernelSDPA(torch.autograd.Function):
     @staticmethod
     def forward(ctx, q, k, v):
@@ -92,7 +93,18 @@ class KernelSDPA(torch.autograd.Function):
         scale = 1.0 / math.sqrt(d)
         seq_len_k = k.size(-2)
         grid = lambda meta: (b * h, l)
-        sdpa_kernel[grid](q, k, v, o_BHLD, z_BHL, scale, l, seq_len_k, d, BLOCK_SIZE=triton.next_power_of_2(d))
+        sdpa_kernel[grid](
+            q,
+            k,
+            v,
+            o_BHLD,
+            z_BHL,
+            scale,
+            l,
+            seq_len_k,
+            d,
+            BLOCK_SIZE=triton.next_power_of_2(d),
+        )
         return o_BHLD
 
     @staticmethod

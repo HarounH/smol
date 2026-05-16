@@ -26,28 +26,28 @@ def sdpa_kernel_chunked(
 
     # each program handles some one (b, h, q_i) query
     q_block_ptr = tl.make_block_ptr(
-        Q_ptr, # base
-        (BATCH_SIZE * NUM_HEADS, seq_len_q, dim), # shape
-        (seq_len_q * dim, dim, 1), # strides
+        Q_ptr,  # base
+        (BATCH_SIZE * NUM_HEADS, seq_len_q, dim),  # shape
+        (seq_len_q * dim, dim, 1),  # strides
         (pid_bh, pid_l, 0),  # offsets
-        (1, 1, dim), # block shape
-        (0, 1, 2), # order
+        (1, 1, dim),  # block shape
+        (0, 1, 2),  # order
     )
     z_block_ptr = tl.make_block_ptr(
-        Z_ptr, # base
-        (BATCH_SIZE * NUM_HEADS, seq_len_q), # shape
-        (seq_len_q, 1), # strides
+        Z_ptr,  # base
+        (BATCH_SIZE * NUM_HEADS, seq_len_q),  # shape
+        (seq_len_q, 1),  # strides
         (pid_bh, pid_l),  # offsets
-        (1, 1), # block shape
-        (0, 1), # order
+        (1, 1),  # block shape
+        (0, 1),  # order
     )
     o_block_ptr = tl.make_block_ptr(
-        O_ptr, # base
-        (BATCH_SIZE * NUM_HEADS, seq_len_q, dim), # shape
-        (seq_len_q * dim, dim, 1), # strides
+        O_ptr,  # base
+        (BATCH_SIZE * NUM_HEADS, seq_len_q, dim),  # shape
+        (seq_len_q * dim, dim, 1),  # strides
         (pid_bh, pid_l, 0),  # offsets
-        (1, 1, dim), # block shape
-        (0, 1, 2), # order
+        (1, 1, dim),  # block shape
+        (0, 1, 2),  # order
     )
     running_max = 0.0
     running_z = 0.0
@@ -59,12 +59,12 @@ def sdpa_kernel_chunked(
         # TODO
         # load block of k
         k_block_ptr = tl.make_block_ptr(
-            K_ptr, # base
-            (BATCH_SIZE * NUM_HEADS, seq_len_k, dim), # shape
-            (seq_len_k * dim, dim, 1), # strides
+            K_ptr,  # base
+            (BATCH_SIZE * NUM_HEADS, seq_len_k, dim),  # shape
+            (seq_len_k * dim, dim, 1),  # strides
             (pid_bh, k_i, 0),  # offsets
-            (1, BLOCK_SIZE_K, dim), # block shape
-            (0, 1, 2), # order
+            (1, BLOCK_SIZE_K, dim),  # block shape
+            (0, 1, 2),  # order
         )
         k_val = tl.load(k_block_ptr)  # (1, BK, D)
         # compute qk in a stable way
@@ -79,12 +79,12 @@ def sdpa_kernel_chunked(
 
         # load block of v
         v_block_ptr = tl.make_block_ptr(
-            V_ptr, # base
-            (BATCH_SIZE * NUM_HEADS, seq_len_k, dim), # shape
-            (seq_len_k * dim, dim, 1), # strides
+            V_ptr,  # base
+            (BATCH_SIZE * NUM_HEADS, seq_len_k, dim),  # shape
+            (seq_len_k * dim, dim, 1),  # strides
             (pid_bh, k_i, 0),  # offsets
-            (1, BLOCK_SIZE_K, dim), # block shape
-            (0, 1, 2), # order
+            (1, BLOCK_SIZE_K, dim),  # block shape
+            (0, 1, 2),  # order
         )
         v_val = tl.load(v_block_ptr)  # (1, BK, D)
         # compute qkt * v
@@ -101,6 +101,7 @@ def sdpa_kernel_chunked(
         current_o / running_z,
         boundary_check=(0, 1, 2),
     )
+
 
 class KernelSDPAChunked(torch.autograd.Function):
     @staticmethod
@@ -120,7 +121,12 @@ class KernelSDPAChunked(torch.autograd.Function):
         BLOCK_SIZE_D = triton.next_power_of_2(d)
         BLOCK_SIZE_K = block_size // BLOCK_SIZE_D
         sdpa_kernel_chunked[grid](
-            q, k, v, o_BHLD, z_BHL, scale,
+            q,
+            k,
+            v,
+            o_BHLD,
+            z_BHL,
+            scale,
             b,
             h,
             l,

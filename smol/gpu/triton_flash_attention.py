@@ -78,4 +78,6 @@ class KernelFlashAttention(torch.autograd.Function):
 
     @staticmethod
     def backward(ctx, grad_output):
-        raise NotImplementedError("Backward pass is not implemented for KernelFlashAttention.")
+        raise NotImplementedError(
+            "Backward pass is not implemented for KernelFlashAttention."
+        )
