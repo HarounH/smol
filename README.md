@@ -3,6 +3,10 @@
 Ideas:
 1. Build a polynomial expression language, see what can and can not fit
 
+## Development
+
+Keep tests next to the module they cover.
+
 ## Polynomial language
 
 `smol.data.polynomial_language` provides structured synthetic examples made of
